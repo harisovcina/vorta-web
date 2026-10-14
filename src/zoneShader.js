@@ -149,6 +149,10 @@ uniform sampler2D uAOBot;
 uniform mat4 uAOMat;       // world -> AO clip (orthographic, looking straight down)
 uniform vec2 uAOScale;     // metres per AO uv (x, y)
 uniform float uAOOn;
+uniform float uSkDeep;     // ?skdeep= contrast on the BAKED sky occlusion (contact darkening at crate / building bases) on up-facing surfaces
+uniform float uShDeep;     // ?shdeep= contrast on the BAKED sun shadows (1 = as baked; 1.6 = deeper partial shadow)
+uniform float uAOStr;      // ?aostr= multiplier on the sky-occlusion amount (1 = as calibrated)
+uniform float uAOCap;      // ?aocap= upper bound of the occlusion (0.85 as calibrated)
 uniform float uFallback;   // debug ?fallback=0
 float s2(float dh, float d) { float t = max(dh, 0.0) / d; return t * t / (1.0 + t * t); }   // sin^2 of the elevation
 float skyVis(float up) {
@@ -179,7 +183,7 @@ float skyVis(float up) {
     }
     occ += o;
   }
-  return 1.0 - up * min(occ / float(DIRS), 0.85);
+  return 1.0 - up * min(occ / float(DIRS) * uAOStr, uAOCap);
 }
 varying vec2 vUv;
 varying float vMat;
@@ -213,6 +217,9 @@ void main() {
   // of the baked sun term stays (on open ground it is ~1%, so shadows go as deep as in Cycles)
   vec3 fn = faceN();
   vec3 ind = max(su - vec3(1.5915494 * max(dot(fn, uSunDir), 0.0)), vec3(0.0));
+  if (uSkDeep > 1.001 && fn.y > 0.5) sk *= pow(clamp(sk.g / (lmScale.x * 0.85), 0.0, 1.0), uSkDeep - 1.0);   // zone's brightest texel ~ open sky
+  float dr = 1.5915494 * max(dot(fn, uSunDir), 0.0);
+  if (dr > 0.05 && uShDeep > 1.001) su *= pow(clamp(su.g / dr, 0.0, 1.0), uShDeep - 1.0);   // deepen the baked (denoised, soft) sun shadows: lit fraction ^ k
   vec3 L = sk * uSky * skyVis(abs(fn.y)) + mix(ind, su, sunVis() * cloudT()) * uSun;
   // texels the bake never reached (slivers thinner than a lightmap texel) come out pure black: fall back to flat light
   if (uFallback > 0.5 && max(sk.r, max(sk.g, sk.b)) < 0.004) L = uSky * 0.75 + uSun * 0.5;

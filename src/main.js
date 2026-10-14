@@ -10,6 +10,7 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import { loader, startExperience } from './ui.js';
 gsap.registerPlugin(ScrollTrigger);
 
 const A = import.meta.env.BASE_URL + 'assets/';   // relative in builds (vite.config base './')
@@ -21,12 +22,15 @@ const FI = Object.fromEntries(TL.fields.map((f, i) => [f, i]));
 
 // ---------- renderer / scene ----------
 // ---------- quality tier (phones/tablets/weak GPUs get lighter settings; override with ?tier=low|mid|high) ----------
+const DEBUG = new URLSearchParams(location.search).has('debug');
 const qTier = new URLSearchParams(location.search).get('tier');
 const mobileUA = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent));
 const TIER = qTier || (mobileUA ? (Math.min(screen.width, screen.height) < 600 ? 'low' : 'mid') : (navigator.hardwareConcurrency || 8) <= 4 ? 'mid' : 'high');
 const Q = { low: { dpr: 1.25, shadow: 1024, msaa: 0, bloomScale: 0.5, lights: 6 }, mid: { dpr: 1.5, shadow: 1536, msaa: 2, bloomScale: 0.75, lights: 10 },
-            high: { dpr: 2, shadow: 2048, msaa: 4, bloomScale: 1, lights: 16 } }[TIER] || { dpr: 2, shadow: 2048, msaa: 4, bloomScale: 1, lights: 16 };
+            high: { dpr: 1.5, shadow: 2048, msaa: 4, bloomScale: 1, lights: 16 } }[TIER] || { dpr: 1.5, shadow: 2048, msaa: 4, bloomScale: 1, lights: 16 };
 const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
+{ const qq = new URLSearchParams(location.search);   // perf A/B toggles: ?dpr=1 ?msaa=0
+  if (qq.has('dpr')) Q.dpr = +qq.get('dpr'); if (qq.has('msaa')) Q.msaa = +qq.get('msaa'); }
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, Q.dpr));
 renderer.shadowMap.enabled = TIER !== 'low';   // live-lit objects (truck, cars, workers) get the static world's sun shadows
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -77,6 +81,8 @@ const U = {
   uShadowMap: { value: null }, uShadowMat: { value: new THREE.Matrix4() }, uShadowTexel: { value: 1 / 2048 },
   uShadowFloor: { value: 0.0 }, uShadowOn: { value: 0 },   // floor 0: the shader keeps the baked bounce (sun term minus direct) instead
   uAOTop: { value: null }, uAOBot: { value: null }, uAOMat: { value: new THREE.Matrix4() }, uAOScale: { value: new THREE.Vector2(100, 100) }, uAOOn: { value: 0 },
+  uShDeep: { value: +(new URLSearchParams(location.search).get('shdeep') || 1.2) }, uSkDeep: { value: +(new URLSearchParams(location.search).get('skdeep') || 2) },
+  uAOStr: { value: +(new URLSearchParams(location.search).get('aostr') || 2) }, uAOCap: { value: +(new URLSearchParams(location.search).get('aocap') || 1) },
   uShadowScale: { value: new THREE.Vector3(100, 100, 500) }, uPenumbra: { value: 0.28 },
   // cloud shadows (mask painted below from manifest.cloudShadows)
   uFallback: { value: new URLSearchParams(location.search).get('fallback') === '0' ? 0 : 1 },
@@ -113,9 +119,17 @@ const groundAlb = new THREE.Vector3().fromArray(man.terrainStyle ? man.terrainSt
 // ---------- loaders ----------
 const texLoader = new THREE.TextureLoader();
 // loading progress (first-frame assets): every texture / GLB / zone binary counts once
-const prog = { total: 0, done: 0, el: document.getElementById('loading') };
-const track = (pr) => { prog.total++; pr.then(() => { prog.done++; if (prog.el && prog.total) prog.el.textContent = `Loading ${Math.round(100 * prog.done / prog.total)}%`; }, () => {}); return pr; };
-const loadTex = (f) => track(new Promise((res, rej) => texLoader.load(A + f, (t) => { t.colorSpace = THREE.NoColorSpace; t.generateMipmaps = true; t.minFilter = THREE.LinearMipmapLinearFilter; t.anisotropy = 8; res(t); }, undefined, rej)));
+const track = (pr) => { pr.then(() => loader.tick(), () => {}); return pr; };
+// lightmaps decode off the main thread (ImageBitmap) so big WebPs never stall a frame at upload time.
+// Same pixels as TextureLoader: flipped at decode instead of at upload, no colour management, no premultiply.
+// Safari / Firefox-iOS lack the options -> plain TextureLoader there (same rule as three's GLTFLoader).
+const useBitmap = new URLSearchParams(location.search).get('bmp') !== '0' && typeof createImageBitmap !== 'undefined' && !/^((?!chrome|android).)*safari/i.test(navigator.userAgent) && !/Firefox/.test(navigator.userAgent);
+const bmpLoader = useBitmap ? new THREE.ImageBitmapLoader().setOptions({ imageOrientation: 'flipY', premultiplyAlpha: 'none', colorSpaceConversion: 'none' }) : null;
+const lmSetup = (t) => { t.colorSpace = THREE.NoColorSpace; t.generateMipmaps = true; t.minFilter = THREE.LinearMipmapLinearFilter; t.anisotropy = 8; return t; };
+const loadTex = (f) => track(new Promise((res, rej) => {
+  if (bmpLoader) bmpLoader.load(A + f, (bmp) => { const t = lmSetup(new THREE.Texture(bmp)); t.flipY = false; t.needsUpdate = true; res(t); }, undefined, rej);
+  else texLoader.load(A + f, (t) => res(lmSetup(t)), undefined, rej);
+}));
 const black = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1); black.needsUpdate = true;
 const gltf = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
 // meshopt-packed copies (exporter step 'pack') when present: ~5x smaller downloads
@@ -158,7 +172,7 @@ if (CS && CS.polys.length) {
   U.uPenumbra.value = 2 * Math.tan(CS.sunAngle / 2);
 }
 async function zoneData(z) {
-  const buf = await (await fetch(A + z.bin)).arrayBuffer();
+  const buf = await track(fetch(A + z.bin).then((r) => r.arrayBuffer()));
   const L = z.layout;
   const view = (k, C) => new C(buf, L[k].offset, L[k].count);
   const g = new THREE.BufferGeometry();
@@ -185,6 +199,9 @@ async function zoneData(z) {
   }
   return { g, objTex };
 }
+// generous bounds for culling: build-in springs overshoot ~1.45x around object pivots, drop-ins start above
+const NOCULL = new URLSearchParams(location.search).get('cull') === '0';   // debug A/B
+function padBounds(g) { if (!g.boundingSphere) g.computeBoundingSphere(); g.boundingSphere.radius = g.boundingSphere.radius * 1.2 + 60; }
 const pal = (z, key) => Array.from({ length: 64 }, (_, i) => new THREE.Vector3().fromArray(z.materials[i] ? z.materials[i][key] : [0, 0, 0]));
 const palF = (z, f) => Array.from({ length: 64 }, (_, i) => (z.materials[i] ? +f(z.materials[i]) : 0));
 const zoneLamp = {}, zoneMat = {}, zoneWin = {};   // per-zone lamps-layer brightness (manifest.lampCurves), zone materials by key
@@ -218,7 +235,7 @@ async function loadZone(z) {
   });
   zoneMat[z.zone] = mat;
   const mesh = new THREE.Mesh(g, mat);
-  mesh.frustumCulled = false;
+  padBounds(g); mesh.frustumCulled = !NOCULL;   // padded sphere: off-screen districts are skipped
   mesh.name = 'zone_' + z.zone;
   mesh.castShadow = true;   // into three's sun shadow map (lights the live objects), with the build-in pop applied
   mesh.customDepthMaterial = new THREE.ShaderMaterial({ vertexShader: zoneVertex, fragmentShader: zoneDepthFragment, uniforms: mat.uniforms, defines: mat.defines });
@@ -228,6 +245,7 @@ async function loadZone(z) {
 // glass zones: opaque glass in the opaque pass, clear glass (glasshouse) blended after it
 async function loadGlassZone(z) {
   const { g, objTex } = await zoneData(z);
+  padBounds(g);
   const uniforms = {
     ...U, uObj: { value: objTex }, uBuild: { value: buildTex }, uBuildN: { value: buildN },
     uAlbedo: { value: pal(z, 'albedo') }, uEmit: { value: pal(z, 'emit') },
@@ -244,7 +262,7 @@ async function loadGlassZone(z) {
   const hasClear = z.materials.some((m) => m.clear);
   for (const [mat, tag, order] of [[opaque, '', 0], ...(hasClear ? [[clearMul, '_clearMul', 10], [clearAdd, '_clearAdd', 11]] : [])]) {
     const mesh = new THREE.Mesh(g, mat);
-    mesh.frustumCulled = false; mesh.name = 'zone_' + z.zone + tag; mesh.renderOrder = order;
+    mesh.frustumCulled = !NOCULL; mesh.name = 'zone_' + z.zone + tag; mesh.renderOrder = order;
     if (!tag) { mesh.castShadow = true; mesh.customDepthMaterial = new THREE.ShaderMaterial({ vertexShader: zoneVertex, fragmentShader: glassDepthFragment, uniforms }); }
     scene.add(mesh);
   }
@@ -266,11 +284,27 @@ const zoneKey = (z) => String(z.zone).replace('GLASS_', '');
 const isEarly = (z) => EARLY.has(zoneKey(z));
 const CITY_GATE = 400;   // first city pops happen at ~411
 let cityReady = false;
+const LM_KEYS = ['sky', 'sun', 'lamps', 'trail', 'skyClean', 'sunClean', 'windows'];
+loader.expect(4 + man.zones.filter(isEarly).reduce((n, z) => n + 1 + LM_KEYS.filter((k) => (man.lightmaps[z.zone] || {})[k]).length, 0)
+  + (man.glassZones || []).filter(isEarly).length);
 const [ambient, truck, props, traffic] = await Promise.all([
   loadGLB('ambient.glb'), loadGLB('truck.glb'), loadGLB('props.glb'), loadGLB('traffic.glb'),
   ...man.zones.filter(isEarly).map(loadZone), ...(man.glassZones || []).filter(isEarly).map(loadGlassZone),
 ]);
+// GPU uploads spread over frames (one texture per frame) instead of one long stall
+const uploadQueue = []; let uploadDone = null;
+function sceneTextures() {
+  const texs = new Set();
+  scene.traverse((o) => {
+    for (const m of [].concat(o.material || [], o.customDepthMaterial || [])) {
+      for (const u of Object.values(m.uniforms || {})) if (u && u.value && u.value.isTexture) texs.add(u.value);
+      for (const k of ['map', 'normalMap', 'emissiveMap', 'roughnessMap', 'metalnessMap', 'aoMap']) if (m[k]) texs.add(m[k]);
+    }
+  });
+  return [...texs];
+}
 const cityLoad = Promise.all([...man.zones.filter((z) => !isEarly(z)).map(loadZone), ...(man.glassZones || []).filter((z) => !isEarly(z)).map(loadGlassZone)])
+  .then(() => new Promise((done) => { uploadQueue.push(...sceneTextures()); uploadDone = done; }))   // drained by the render loop
   .then(() => (renderer.compileAsync ? renderer.compileAsync(scene, cam) : null))
   .then(() => { cityReady = true; window.__cityReady = true; console.log('[vorta] city ready', Math.round(performance.now()), 'ms'); });
 scene.add(ambient.scene, truck.scene, props.scene, traffic.scene);
@@ -306,8 +340,11 @@ const intro = { start: null, done: false };
 const tmpV = new THREE.Vector3();
 function applyIntro(now) {
   if (!fk || intro.done) return;
-  if (intro.start === null) { if (window.__state.frame < 250) intro.start = now + 0.35; else return; }
-  const k = (now - intro.start) * 24;
+  if (intro.start === null) {
+    if (window.__state.frame >= 250) { intro.done = true; return; }   // deep link past the warehouse: leave it as is
+    if (window.__introGo) intro.start = now + 0.1;                  // UI sets this when the curtain starts opening
+  }
+  const k = intro.start === null ? -1 : (now - intro.start) * 24;      // k < 0: hidden until then
   if (k > 44) { fk.scale.set(1, 1, 1); intro.done = true; return; }
   const [sxy, sz, zoff] = entrance(k, 1.4);
   const r = fk.position.clone();
@@ -592,8 +629,6 @@ function updateLights() {
   for (; pi < POOL_POINT; pi++) pointPool[pi].intensity = 0;
 }
 console.log('[vorta] first frame ready', Math.round(performance.now()), 'ms');
-document.getElementById('loading').style.opacity = 0;
-setTimeout(() => document.getElementById('loading').remove(), 700);
 
 // ---------- frame state ----------
 const qa = new THREE.Quaternion(), qb = new THREE.Quaternion(), tmpQ = new THREE.Quaternion();
@@ -604,6 +639,7 @@ function applyFrame(frame) {
   const a = TL.frames[i], b = TL.frames[Math.min(i + 1, TL.frames.length - 1)];
   const v = (k) => a[FI[k]] + (b[FI[k]] - a[FI[k]]) * t;
   U.uFrame.value = frame;
+  window.__state.shown = frame;            // what is actually on screen (city gate applied) -> UI steps follow this
   const EF = man.view && man.view.exposureFrames;
   if (EF) renderer.toneMappingExposure = Math.pow(2, EF[i] + (EF[Math.min(i + 1, EF.length - 1)] - EF[i]) * t);
   if (viewPass) { viewPass.uniforms.uExposure.value = renderer.toneMappingExposure; viewPass.uniforms.uSeed.value = (viewPass.uniforms.uSeed.value + 17.13) % 997; }
@@ -612,6 +648,7 @@ function applyFrame(frame) {
   U.uSky.value.set(v('skyR') * ss, v('skyG') * ss, v('skyB') * ss);
   const se = v('sunEnergy') / 5;
   U.uSun.value.set(v('sunR') * se, v('sunG') * se, v('sunB') * se);
+  window.__state.sunE = v('sunEnergy');   // day/night -> UI text colour
   U.uLamp.value = THREE.MathUtils.clamp((5 - v('sunEnergy')) / 4.7, 0, 1);
   for (const [zk, u] of Object.entries(zoneWin)) {
     const c = man.windowCurves && man.windowCurves[zk];
@@ -662,17 +699,14 @@ function applyFrame(frame) {
     if (k > 0 && k < c.s.length - 1) { const i = Math.floor(k), u = k - i; sc = c.s[i] + (c.s[i + 1] - c.s[i]) * u; }
     c.o.scale.setScalar(Math.max(sc, 1e-4));
   }
-  document.getElementById('hud').textContent = `frame ${frame.toFixed(1)}${cityReady ? '' : ' · loading city'}`;
+  if (!DEBUG) document.getElementById('hud').textContent = `frame ${frame.toFixed(1)}${cityReady ? '' : ' · loading city'}`;
 }
 
 // ---------- scroll ----------
 const state = window.__state || { frame: TL.start };
 const qFrame = new URLSearchParams(location.search).get('frame');
 if (qFrame !== null) state.frame = +qFrame;            // debug: pin a story frame (?frame=600) instead of scrolling
-else gsap.to(state, {
-  frame: TL.end, ease: 'none',
-  scrollTrigger: { trigger: '#story', start: 'top top', end: 'bottom bottom', scrub: 1 },
-});
+// (scrolling: ui.js plays frames 1 -> INTRO_END by itself, then scrubs INTRO_END -> STORY_END with the scroll)
 
 // ---------- loop ----------
 // ---------- post: linear HDR target (correct blending for glass), Blender's Glare/Bloom, then AgX + sRGB ----------
@@ -741,8 +775,42 @@ window.addEventListener('resize', resize); resize();
 const clock = new THREE.Clock();
 const qT = +(new URLSearchParams(location.search).get('t') || 0);   // debug: ?t=30 starts the real-time loops 30 s in
 if (qT) { mixer.update(qT); tmixer.update(qT); U.uTime.value += qT; }
-renderer.setAnimationLoop(() => {
-  const dt = Math.min(clock.getDelta(), 0.1);
+let warmFrames = 0;
+// adaptive resolution: if frames run slower than ~50 fps for a while, step the pixel ratio down (never below 1)
+const perf = { acc: 0, n: 0, skip: 90, dpr: renderer.getPixelRatio() };
+function adapt(raw) {
+  if (perf.skip > 0 || uploadQueue.length) { perf.skip--; return; }   // ignore warm-up and upload frames
+  perf.acc += raw; perf.n++;
+  if (perf.n < 40) return;
+  const avg = perf.acc / perf.n; perf.acc = perf.n = 0;
+  if (avg > 1 / 50 && perf.dpr > 1) {
+    perf.dpr = Math.max(1, +(perf.dpr - 0.25).toFixed(2));
+    renderer.setPixelRatio(perf.dpr); resize(); perf.skip = 30;
+    console.log('[vorta] adaptive pixel ratio ->', perf.dpr, `(avg ${(avg * 1000).toFixed(1)} ms)`);
+  }
+}
+const qP = new URLSearchParams(location.search);
+const SKIP = Math.max(1, +(qP.get('skip') || 1));   // shadow + AO refresh every frame (stale ones made the contact shadow trail the truck); ?skip=2 to halve the cost
+let frameNo = 0, hudAcc = 0, hudN = 0, hudMax = 0, hudT = 0;
+function perfHud(raw, cpu) {
+  hudAcc += raw; hudN++; hudMax = Math.max(hudMax, raw); hudT += raw;
+  if (hudT < 0.5) return;
+  const i = renderer.info.render;
+  document.getElementById('hud').textContent = `frame ${(window.__state.shown ?? window.__state.frame).toFixed(0)} · ${(hudN / hudAcc).toFixed(0)} fps · avg ${(hudAcc / hudN * 1000).toFixed(1)} ms · worst ${(hudMax * 1000).toFixed(0)} ms · cpu ${cpu.toFixed(1)} ms · ${i.calls} calls · ${(i.triangles / 1000).toFixed(0)}k tris · dpr ${renderer.getPixelRatio()}`;
+  hudAcc = hudN = hudMax = hudT = 0; renderer.info.reset();
+}
+const FPS_CAP = +(qP.get('fps') || 60), MIN_MS = 1000 / FPS_CAP - 1.5;   // steady 60 beats a wobbling 90 on 120Hz screens; ?fps=120 to uncap
+let lastT = 0;
+renderer.setAnimationLoop((now) => {
+  if (FPS_CAP < 120 && now - lastT < MIN_MS) return;   // skip this display refresh, keep the cadence even
+  lastT = now;
+  const raw = clock.getDelta(), dt = Math.min(raw, 0.1);
+  // hidden behind the loader: after two warm-up frames don't spend GPU / main thread (keeps the loader smooth)
+  if ((window.__hold3D && warmFrames >= 2) || window.__offscreen) return;   // behind the loader, or scrolled past the hero
+  warmFrames++;
+  if (uploadQueue.length) { renderer.initTexture(uploadQueue.shift()); if (!uploadQueue.length && uploadDone) uploadDone(); }
+  else if (uploadDone && !cityReady) uploadDone();
+  if (!window.__hold3D) adapt(raw);
   U.uTime.value += dt;
   mixer.update(dt);
   tmixer.update(dt);
@@ -752,8 +820,21 @@ renderer.setAnimationLoop(() => {
   updateFades(U.uTime.value);
   updateSignals(state.frame, U.uTime.value);
   updateLights();
-  renderShadow();
+  // shadow + sky-occlusion are 3 extra scene passes: refresh them every SKIP-th frame (the maps and their matrices stay paired)
+  if (DEBUG) renderer.info.autoReset = false;
+  const doShadow = (frameNo++ % SKIP) === 0;
+  renderer.shadowMap.autoUpdate = doShadow;
+  if (doShadow) renderShadow();
+  const t0 = performance.now();
   composer.render(dt);
+  if (DEBUG) perfHud(raw, performance.now() - t0);
 });
 window.__vorta = { scene, cam, man, state, bloom, composer, TIER, U, aoRTs, aoCam, aoTopMat, aoBotMat };
 window.__ready = true;
+// upload the first-frame textures + compile programs while the loader sits still (the city streams in later)
+async function warm3D() {
+  sceneTextures().forEach((t) => renderer.initTexture(t));
+  if (renderer.compileAsync) await renderer.compileAsync(scene, cam);
+  applyFrame(state.frame); renderShadow(); composer.render(0);
+}
+startExperience({ state, pinned: qFrame !== null, warm: warm3D });
