@@ -79,6 +79,7 @@ function buildCamPanel() {
 }
 { const q = new URLSearchParams(location.search); if (q.get('cam') === '1') buildCamPanel();
   addEventListener('keydown', (e) => { if ((e.key === 'c' || e.key === 'C') && !e.metaKey && !e.ctrlKey && !/INPUT|TEXTAREA/.test(document.activeElement && document.activeElement.tagName)) { const p = document.getElementById('camPanel'); if (p) p.remove(); else buildCamPanel(); } }); }
+const UNZOOM = new URLSearchParams(location.search).get('unzoom') !== '0', UNZOOM_HOLD = 430, UNZOOM_BLEND = 541, START_ZOOM = +(new URLSearchParams(location.search).get('startzoom') || 1.35);   // ?startzoom=1 = fully unzoomed start   // see applyFrame
 function frameCamera(ortho, sx, sy) {
   const aspect = renderer.domElement.clientWidth / renderer.domElement.clientHeight;
   const h = ortho * 9 / 16, w = h * aspect;              // keep Blender's vertical framing on any screen
@@ -741,7 +742,17 @@ function applyFrame(frame) {
   const EF = man.view && man.view.exposureFrames;
   if (EF) renderer.toneMappingExposure = Math.pow(2, EF[i] + (EF[Math.min(i + 1, EF.length - 1)] - EF[i]) * t);
   if (viewPass) { viewPass.uniforms.uExposure.value = renderer.toneMappingExposure; viewPass.uniforms.uSeed.value = (viewPass.uniforms.uSeed.value + 17.13) % 997; }
-  frameCamera(v('ortho') / camTune.zoom, v('shiftX') + camTune.x, v('shiftY') + camTune.y);
+  if (UNZOOM) {
+    // Final-frame zoom for the whole story, truck centred on screen until f430, then eased into Blender's closing framing
+    // (zoom is already identical there). ?unzoom=0 restores Blender's own camera track (zoom-in on the warehouse, zoom-out over the city).
+    const last = TL.frames[TL.frames.length - 1], oEnd = last[FI.ortho];
+    cam.updateMatrixWorld();
+    tmpV.set(v('truckX'), v('truckY'), v('truckZ')).applyMatrix4(cam.matrixWorldInverse);
+    const k = 1 - THREE.MathUtils.smoothstep(frame, UNZOOM_HOLD, UNZOOM_BLEND);   // 1 = centred on the truck, 0 = Blender's end framing
+    // zoom: START_ZOOM x closer at the dock, easing out to the closing frame's zoom between f215 and f541
+    const zf = THREE.MathUtils.lerp(START_ZOOM, 1, THREE.MathUtils.smoothstep(frame, 215, UNZOOM_BLEND)) * camTune.zoom, oEff = oEnd / zf;
+    frameCamera(oEff, THREE.MathUtils.lerp(last[FI.shiftX], tmpV.x / oEff, k) + camTune.x, THREE.MathUtils.lerp(last[FI.shiftY], tmpV.y / oEff, k) + camTune.y);
+  } else frameCamera(v('ortho') / camTune.zoom, v('shiftX') + camTune.x, v('shiftY') + camTune.y);
   const ss = v('skyStrength');
   U.uSky.value.set(v('skyR') * ss, v('skyG') * ss, v('skyB') * ss);
   const se = v('sunEnergy') / 5;

@@ -14,11 +14,11 @@ const INTRO_SECONDS = 5.0;        // real time for the auto-played intro (f20 ->
 // Step boundaries follow the truck's legs (669-frame story): dock (f170) -> open road (f215) -> first corner, dusk (f330) -> city at night (f430) -> final approach and lit towers (f520).
 // Copy is placeholder.
 export const STEPS = [
-  { from: INTRO_END, tag: 'Dispatch',  title: 'Loaded and ready to roll', desc: 'Every shipment starts at the dock. Cargo is scanned, sealed and on the road in minutes.' },
-  { from: 215,       tag: 'Open road', title: 'Miles of clear road',      desc: 'Live tracking follows the truck from the first kilometre, so you always know where it is.' },
-  { from: 330,       tag: 'Dusk',      title: 'Routed around the rush',   desc: 'As daylight fades, smart routing threads the route around traffic before it builds.' },
-  { from: 430,       tag: 'Night',     title: 'The city after dark',      desc: 'Through lit-up streets and quiet junctions, the last miles are the most precise.' },
-  { from: 520,       tag: 'Arrival',   title: 'Right on the door',        desc: 'Delivered on time, signed for and confirmed. Door to door, start to finish.' },
+  { from: INTRO_END, tag: 'Onboarding', title: 'Live in two weeks, not two years', desc: 'Your catalogue, customers and prices come in from spreadsheets. No consulting project, no configuration workshops — you spend the fortnight on your data.' },
+  { from: 215,       tag: 'Durable goods', title: 'Built for durable goods — not a generic ERP bent into shape', desc: 'A sofa with ten finishes and three fabrics is one product, not ten thousand rows. One option tree generates the SKUs, the bill of materials, the prices and the 3D configurator.' },
+  { from: 330,       tag: 'End to end', title: 'Everything from enquiry to paid invoice, in one place', desc: 'Catalogue, pricing, orders, production, QC, warehouses, shipments, invoices, reports. No bolt-ons, no second system to reconcile.' },
+  { from: 430,       tag: 'AI', title: 'AI intelligence built in', desc: "Drop a customer's order sheet in and get a priced draft order back. Ask when you can confirm, or what's in stock — in your own words, and it answers from your real data." },
+  { from: 520,       tag: 'Pricing', title: 'One flat price. Every single user.', desc: "Not per seat, not per module. Put sales, planning, the warehouse floor and finance on it — the bill doesn't move. Per-seat ERPs price out the people who touch the goods." },
 ];
 const HERO = { tag: 'Vorta', title: 'Every mile, in motion', desc: 'Follow one delivery from the dock to the door.' };
 

@@ -74,15 +74,15 @@
 
   /* ---------- text layer ---------- */
   #ui { position: absolute; left: 0; right: 0; bottom: 0; z-index: 6; padding: 0 var(--pad-x) calc(var(--pad-b) + env(safe-area-inset-bottom)); pointer-events: none; visibility: hidden; }
-  .block { width: clamp(300px, 28vw, 420px); }   /* fixed width: title, description and stepper share it, and it stays bottom-left clear of the truck */
+  .block { width: clamp(320px, 38vw, 580px); }   /* fixed width: title, description and stepper share it, and it stays bottom-left clear of the truck */
   .eyebrow { display: flex; align-items: center; gap: 12px; font: 500 12px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: rgb(var(--ink) / .72); height: 14px; margin-bottom: 12px; }
   .eyebrow .num { color: rgb(var(--ink)); }
   .eyebrow .rule { width: 28px; height: 1px; background: currentColor; opacity: .5; }
-  .title { margin: 0; font: 600 clamp(26px, 2.5vw, 38px)/1.1 var(--font); letter-spacing: -0.022em; color: rgb(var(--ink)); }
+  .title { margin: 0; font: 600 clamp(34px, 3.25vw, 49px)/1.08 var(--font); letter-spacing: -0.022em; color: rgb(var(--ink)); }
   .title .w { display: inline-block; overflow: hidden; vertical-align: top; padding: 0 .04em .14em 0; margin: 0 -.04em -.14em 0; }
   .title .wi { display: inline-block; will-change: transform; }
   .title .sp { display: inline-block; width: .24em; }
-  .desc { margin: 10px 0 0; font: 400 15px/1.5 var(--font); color: rgb(var(--ink) / .8); min-height: 3em; }
+  .desc { margin: 12px 0 0; font: 500 15px/1.5 var(--font); color: rgb(var(--ink) / .82); min-height: 4.5em; }
 
   /* stepper: five equal segments spanning the copy width; numbers above, active segment fills with progress */
   .stepper { display: flex; align-items: flex-end; gap: 8px; margin-top: 16px; width: 100%; pointer-events: auto; }
@@ -113,7 +113,7 @@
     :root { --gx: 24px; --pad-x: 22px; --pad-b: 30px; }
     #veil { --rx: 120%; --ry: 46%; }
     .block { width: 100%; }
-    .title { font-size: 28px; }
+    .title { font-size: 36px; }
     .hint { left: auto; right: var(--pad-x); transform: none; justify-items: end; }
     .hint .label { display: none; }
   }

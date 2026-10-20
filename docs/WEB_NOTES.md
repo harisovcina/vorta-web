@@ -226,3 +226,7 @@ Story map in `src/ui.js`: INTRO_START 20, INTRO_END 170 (truck stops at the door
 `main.js` keeps the full preload + adaptive resolution from v4, and the site hooks: `loader.expect/tick`, `startExperience({ warm: warm3D })`, `__hold3D` / `__offscreen` render gating, 60 fps cap, `?debug` HUD.
 The old shadow-deepening uniforms (`?shdeep`, `?skdeep`, `?aostr`, `?aocap`) from the Oct 14 site commit were NOT carried over: the shading is calibrated against Cycles in v4 (`?aog`).
 Full-flow check: `_web/scripts/flow.mjs` (loader -> intro -> story steps -> banner -> sections), Mac Chrome via CDP.
+
+## Camera: unzoomed start (2026-10-20)
+The web camera now runs at the closing frame's zoom (ortho 160) for the whole story, centred on the truck until f430, then eased into Blender's closing framing by f541 (`UNZOOM` in `src/main.js`, applied in `applyFrame`). `?unzoom=0` restores Blender's own camera track (zoomed in on the warehouse, zooming out over the city). The camera panel (`?cam=1`) zoom/shift still stack on top.
+Known side effect: at this zoom the start frames show the edge of the baked world (bare ground boundary at the left, wire hills at the top). Blender's camera never framed that. `?zoom=1.35` hides most of it.
