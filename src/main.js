@@ -10,6 +10,7 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import { loader, startExperience } from './ui.js';
 gsap.registerPlugin(ScrollTrigger);
 
 const A = import.meta.env.BASE_URL + 'assets/';   // relative in builds (vite.config base './')
@@ -21,12 +22,15 @@ const FI = Object.fromEntries(TL.fields.map((f, i) => [f, i]));
 
 // ---------- renderer / scene ----------
 // ---------- quality tier (phones/tablets/weak GPUs get lighter settings; override with ?tier=low|mid|high) ----------
+const DEBUG = new URLSearchParams(location.search).has('debug');
 const qTier = new URLSearchParams(location.search).get('tier');
 const mobileUA = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent));
 const TIER = qTier || (mobileUA ? (Math.min(screen.width, screen.height) < 600 ? 'low' : 'mid') : (navigator.hardwareConcurrency || 8) <= 4 ? 'mid' : 'high');
 const Q = { low: { dpr: 1.25, shadow: 1024, msaa: 0, bloomScale: 0.5, lights: 6 }, mid: { dpr: 1.5, shadow: 1536, msaa: 2, bloomScale: 0.75, lights: 10 },
-            high: { dpr: 2, shadow: 2048, msaa: 4, bloomScale: 1, lights: 16 } }[TIER] || { dpr: 2, shadow: 2048, msaa: 4, bloomScale: 1, lights: 16 };
+            high: { dpr: 1.5, shadow: 2048, msaa: 4, bloomScale: 1, lights: 16 } }[TIER] || { dpr: 1.5, shadow: 2048, msaa: 4, bloomScale: 1, lights: 16 };
 const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
+{ const qq = new URLSearchParams(location.search);   // perf A/B toggles: ?dpr=1 ?msaa=0
+  if (qq.has('dpr')) Q.dpr = +qq.get('dpr'); if (qq.has('msaa')) Q.msaa = +qq.get('msaa'); }
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, Q.dpr));
 renderer.shadowMap.enabled = TIER !== 'low';   // live-lit objects (truck, cars, workers) get the static world's sun shadows
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -111,6 +115,8 @@ const U = {
   uShadowMap: { value: null }, uShadowMat: { value: new THREE.Matrix4() }, uShadowTexel: { value: 1 / 2048 },
   uShadowFloor: { value: 0.0 }, uAOGain: { value: +(new URLSearchParams(location.search).get('aog') || 1.35) }, uShadowGamma: { value: +(new URLSearchParams(location.search).get('sgamma') || 1) }, uShadowOn: { value: 0 },   // floor 0: the shader keeps the baked bounce (sun term minus direct) instead
   uAOTop: { value: null }, uAOBot: { value: null }, uAOMat: { value: new THREE.Matrix4() }, uAOScale: { value: new THREE.Vector2(100, 100) }, uAOOn: { value: 0 },
+  uShDeep: { value: +(new URLSearchParams(location.search).get('shdeep') || 1.2) }, uSkDeep: { value: +(new URLSearchParams(location.search).get('skdeep') || 2) },
+  uAOStr: { value: +(new URLSearchParams(location.search).get('aostr') || 2) }, uAOCap: { value: +(new URLSearchParams(location.search).get('aocap') || 1) },
   uShadowScale: { value: new THREE.Vector3(100, 100, 500) }, uPenumbra: { value: 0.28 },
   // cloud shadows (mask painted below from manifest.cloudShadows)
   uFallback: { value: new URLSearchParams(location.search).get('fallback') === '0' ? 0 : 1 },
@@ -147,9 +153,17 @@ const groundAlb = new THREE.Vector3().fromArray(man.terrainStyle ? man.terrainSt
 // ---------- loaders ----------
 const texLoader = new THREE.TextureLoader();
 // loading progress (first-frame assets): every texture / GLB / zone binary counts once
-const prog = { total: 0, done: 0, el: document.getElementById('loading') };
-const track = (pr) => { prog.total++; pr.then(() => { prog.done++; if (prog.el && prog.total) prog.el.textContent = `Loading ${Math.round(100 * prog.done / prog.total)}%`; }, () => {}); return pr; };
-const loadTex = (f) => track(new Promise((res, rej) => texLoader.load(A + f, (t) => { t.colorSpace = THREE.NoColorSpace; t.generateMipmaps = true; t.minFilter = THREE.LinearMipmapLinearFilter; t.anisotropy = 8; res(t); }, undefined, rej)));
+const track = (pr) => { pr.then(() => loader.tick(), () => {}); return pr; };
+// lightmaps decode off the main thread (ImageBitmap) so big WebPs never stall a frame at upload time.
+// Same pixels as TextureLoader: flipped at decode instead of at upload, no colour management, no premultiply.
+// Safari / Firefox-iOS lack the options -> plain TextureLoader there (same rule as three's GLTFLoader).
+const useBitmap = new URLSearchParams(location.search).get('bmp') !== '0' && typeof createImageBitmap !== 'undefined' && !/^((?!chrome|android).)*safari/i.test(navigator.userAgent) && !/Firefox/.test(navigator.userAgent);
+const bmpLoader = useBitmap ? new THREE.ImageBitmapLoader().setOptions({ imageOrientation: 'flipY', premultiplyAlpha: 'none', colorSpaceConversion: 'none' }) : null;
+const lmSetup = (t) => { t.colorSpace = THREE.NoColorSpace; t.generateMipmaps = true; t.minFilter = THREE.LinearMipmapLinearFilter; t.anisotropy = 8; return t; };
+const loadTex = (f) => track(new Promise((res, rej) => {
+  if (bmpLoader) bmpLoader.load(A + f, (bmp) => { const t = lmSetup(new THREE.Texture(bmp)); t.flipY = false; t.needsUpdate = true; res(t); }, undefined, rej);
+  else texLoader.load(A + f, (t) => res(lmSetup(t)), undefined, rej);
+}));
 const black = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1); black.needsUpdate = true;
 const gltf = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
 // meshopt-packed copies (exporter step 'pack') when present: ~5x smaller downloads
@@ -201,7 +215,7 @@ if (CS && CS.polys.length) {
   U.uPenumbra.value = 2 * Math.tan(CS.sunAngle / 2);
 }
 async function zoneData(z) {
-  const buf = await (await fetch(A + z.bin)).arrayBuffer();
+  const buf = await track(fetch(A + z.bin).then((r) => r.arrayBuffer()));
   const L = z.layout;
   const view = (k, C) => new C(buf, L[k].offset, L[k].count);
   const g = new THREE.BufferGeometry();
@@ -325,6 +339,9 @@ if (man.trailTail && man.trailTail.idx.length) {
 // stalls on a download or a shader compile once it is on screen.
 const zoneKey = (z) => String(z.zone).replace('GLASS_', '');
 let cityReady = true;
+const LM_KEYS = ['sky', 'sun', 'lamps', 'trail', 'skyClean', 'sunClean', 'windows'];
+// loader progress: every GLB, zone binary, glass binary and lightmap counts once (all of it is preloaded behind the loader)
+loader.expect(4 + man.zones.reduce((n, z) => n + 1 + LM_KEYS.filter((k) => (man.lightmaps[z.zone] || {})[k]).length, 0) + (man.glassZones || []).length);
 const [ambient, truck, props, traffic] = await Promise.all([
   loadGLB('ambient.glb'), loadGLB('truck.glb'), loadGLB('props.glb'), loadGLB('traffic.glb'),
   ...man.zones.map(loadZone), ...(man.glassZones || []).map(loadGlassZone),
@@ -363,8 +380,11 @@ const intro = { start: null, done: false };
 const tmpV = new THREE.Vector3();
 function applyIntro(now) {
   if (!fk || intro.done) return;
-  if (intro.start === null) { if (window.__state.frame < 250) intro.start = now + 0.35; else return; }
-  const k = (now - intro.start) * 24;
+  if (intro.start === null) {
+    if (window.__state.frame >= 250) { intro.done = true; return; }   // deep link past the warehouse: leave it as is
+    if (window.__introGo) intro.start = now + 0.1;                  // UI sets this when the curtain starts opening
+  }
+  const k = intro.start === null ? -1 : (now - intro.start) * 24;      // k < 0: hidden until then
   if (k > 44) { fk.scale.set(1, 1, 1); intro.done = true; return; }
   const [sxy, sz, zoff] = entrance(k, 1.4);
   const r = fk.position.clone();
@@ -717,6 +737,7 @@ function applyFrame(frame) {
   const a = TL.frames[i], b = TL.frames[Math.min(i + 1, TL.frames.length - 1)];
   const v = (k) => a[FI[k]] + (b[FI[k]] - a[FI[k]]) * t;
   U.uFrame.value = frame;
+  window.__state.shown = frame;            // what is actually on screen (city gate applied) -> UI steps follow this
   const EF = man.view && man.view.exposureFrames;
   if (EF) renderer.toneMappingExposure = Math.pow(2, EF[i] + (EF[Math.min(i + 1, EF.length - 1)] - EF[i]) * t);
   if (viewPass) { viewPass.uniforms.uExposure.value = renderer.toneMappingExposure; viewPass.uniforms.uSeed.value = (viewPass.uniforms.uSeed.value + 17.13) % 997; }
@@ -725,6 +746,7 @@ function applyFrame(frame) {
   U.uSky.value.set(v('skyR') * ss, v('skyG') * ss, v('skyB') * ss);
   const se = v('sunEnergy') / 5;
   U.uSun.value.set(v('sunR') * se, v('sunG') * se, v('sunB') * se);
+  window.__state.sunE = v('sunEnergy');   // day/night -> UI text colour
   U.uLamp.value = THREE.MathUtils.clamp((5 - v('sunEnergy')) / 4.7, 0, 1);
   for (const [zk, u] of Object.entries(zoneWin)) {
     const c = man.windowCurves && man.windowCurves[zk];
@@ -776,17 +798,14 @@ function applyFrame(frame) {
     if (k > 0 && k < c.s.length - 1) { const i = Math.floor(k), u = k - i; sc = c.s[i] + (c.s[i + 1] - c.s[i]) * u; }
     c.o.scale.setScalar(Math.max(sc, 1e-4));
   }
-  document.getElementById('hud').textContent = `frame ${frame.toFixed(1)}`;
+  { const h = document.getElementById('hud'); if (h && !DEBUG) h.textContent = `frame ${frame.toFixed(1)}`; }
 }
 
 // ---------- scroll ----------
 const state = window.__state || { frame: TL.start };
 const qFrame = new URLSearchParams(location.search).get('frame');
 if (qFrame !== null) state.frame = +qFrame;            // debug: pin a story frame (?frame=600) instead of scrolling
-else gsap.to(state, {
-  frame: TL.end, ease: 'none',
-  scrollTrigger: { trigger: '#story', start: 'top top', end: 'bottom bottom', scrub: 1 },
-});
+// (scrolling: ui.js plays frames 1 -> INTRO_END by itself, then scrubs INTRO_END -> STORY_END with the scroll)
 
 // ---------- loop ----------
 // ---------- post: linear HDR target (correct blending for glass), Blender's Glare/Bloom, then AgX + sRGB ----------
@@ -862,7 +881,7 @@ const dprMax = Math.min(window.devicePixelRatio, Q.dpr);
 let dprNow = dprMax, dprCeil = dprMax, ema = 16.7, adjClock = 0, lastUp = -99;
 const qDpr = new URLSearchParams(location.search).get('adaptive');   // debug: ?adaptive=0 pins the pixel ratio
 function adaptRes(dt, now) {
-  if (qDpr === '0' || !window.__warm) return;
+  if (qDpr === '0' || !window.__warm || window.__hold3D) return;
   ema = ema * 0.94 + dt * 1000 * 0.06; adjClock += dt;
   if (adjClock < 0.8) return; adjClock = 0;
   let next = dprNow;
@@ -870,8 +889,25 @@ function adaptRes(dt, now) {
   else if (ema < 14.5 && dprNow < Math.min(dprCeil, dprMax)) { next = Math.min(dprCeil, dprMax, dprNow + 0.25); lastUp = now; }
   if (next !== dprNow) { dprNow = next; renderer.setPixelRatio(dprNow); resize(); ema = 16.7; }
 }
-renderer.setAnimationLoop(() => {
-  const dt = Math.min(clock.getDelta(), 0.1);
+const qP = new URLSearchParams(location.search);
+const SKIP = Math.max(1, +(qP.get('skip') || 1));   // shadow + AO refresh every frame; ?skip=2 halves the cost
+let frameNo = 0, hudAcc = 0, hudN = 0, hudMax = 0, hudT = 0;
+function perfHud(raw, cpu) {   // ?debug: live fps / frame-time readout
+  hudAcc += raw; hudN++; hudMax = Math.max(hudMax, raw); hudT += raw;
+  if (hudT < 0.5) return;
+  const i = renderer.info.render, h = document.getElementById('hud');
+  if (h) h.textContent = `frame ${(window.__state.shown ?? window.__state.frame).toFixed(0)} · ${(hudN / hudAcc).toFixed(0)} fps · avg ${(hudAcc / hudN * 1000).toFixed(1)} ms · worst ${(hudMax * 1000).toFixed(0)} ms · cpu ${cpu.toFixed(1)} ms · ${i.calls} calls · ${(i.triangles / 1000).toFixed(0)}k tris · dpr ${renderer.getPixelRatio()}`;
+  hudAcc = hudN = hudMax = hudT = 0; renderer.info.reset();
+}
+const FPS_CAP = +(qP.get('fps') || 60), MIN_MS = 1000 / FPS_CAP - 1.5;   // steady 60 beats a wobbling 90 on 120Hz screens; ?fps=120 to uncap
+let lastT = 0, warmFrames = 0;
+renderer.setAnimationLoop((now) => {
+  if (FPS_CAP < 120 && now - lastT < MIN_MS) return;   // skip this display refresh, keep the cadence even
+  lastT = now;
+  const raw = clock.getDelta(), dt = Math.min(raw, 0.1);
+  // hidden behind the loader (after two warm-up frames) or scrolled past the hero: spend no GPU / main thread
+  if ((window.__hold3D && warmFrames >= 2) || window.__offscreen) return;
+  warmFrames++;
   adaptRes(dt, performance.now() / 1000);
   U.uTime.value += QFREEZE ? 0 : dt;   // ?freeze=1: hold the real-time clock at ?t= (deterministic still captures)
   mixer.update(dt);
@@ -884,23 +920,28 @@ renderer.setAnimationLoop(() => {
   if (man.ripple) U.uRippleP.value.x = (U.uTime.value % man.ripple.period) / man.ripple.period;
   updateSignals(state.frame, U.uTime.value);
   updateLights();
-  renderShadow();
+  // shadow + sky-occlusion are 3 extra scene passes: refresh them every SKIP-th frame (the maps and their matrices stay paired)
+  if (DEBUG) renderer.info.autoReset = false;
+  const doShadow = (frameNo++ % SKIP) === 0;
+  renderer.shadowMap.autoUpdate = doShadow;
+  if (doShadow) renderShadow();
+  const t0 = performance.now();
   composer.render(dt);
+  if (DEBUG) perfHud(raw, performance.now() - t0);
 });
 window.__vorta = { scene, cam, man, state, bloom, composer, TIER, U, aoRTs, aoCam, aoTopMat, aoBotMat };
 window.__ready = true;
 { const rc = new THREE.Raycaster();   // debug: window.__pick(px, py) -> names of the objects under a screen pixel
   window.__pick = (px, py) => { rc.setFromCamera({ x: px / innerWidth * 2 - 1, y: -(py / innerHeight * 2 - 1) }, cam);
     return rc.intersectObjects(scene.children, true).slice(0, 6).map((h) => { let n = h.object.name, p = h.object.parent; while (p && p !== scene) { n = p.name + '/' + n; p = p.parent; } const oa = h.object.geometry && h.object.geometry.attributes.objid, zz = (man.zones || []).concat(man.glassZones || []).find((q) => 'zone_' + q.zone === h.object.name); const nm = oa && zz && zz.names ? zz.names[oa.getX(h.face.a)] : ''; return n + ' [' + nm + '] d=' + h.distance.toFixed(1) + ' p=' + h.point.x.toFixed(1) + ',' + h.point.y.toFixed(1) + ',' + h.point.z.toFixed(1) + ' f=' + (oa ? oa.getX(h.face.a) : ''); }); }; }
-// WARM-UP behind the loader: compile every shader variant (incl. shadow/depth + post), upload every texture and geometry by
-// rendering the extreme story frames once, wait for two painted frames, then reveal. The first scroll never hitches.
-(async () => {
-  const el = document.getElementById('loading');
-  if (el) el.textContent = 'Preparing scene…';
+// WARM-UP behind the loader (called by ui.js while the logo is still on screen): compile every shader variant (incl. shadow/depth
+// + post), upload every texture and geometry by rendering the extreme story frames once, wait for two painted frames.
+// Afterwards the first scroll never hitches.
+async function warm3D() {
   try { if (renderer.compileAsync) await renderer.compileAsync(scene, cam); } catch (e) { console.warn('[vorta] compileAsync', e); }
   for (const f of [TL.end, Math.round((TL.start + TL.end) / 2), TL.start]) { applyFrame(f); updateLights(); renderShadow(); composer.render(0); }
   await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
   window.__warm = true;
   console.log('[vorta] ready', Math.round(performance.now()), 'ms');
-  if (el) { el.style.opacity = 0; setTimeout(() => el.remove(), 700); }
-})();
+}
+startExperience({ state, pinned: qFrame !== null, warm: warm3D });
