@@ -7,6 +7,8 @@ uniform sampler2D uBuild;
 uniform float uBuildN;
 uniform float uFrame;
 uniform float uTime;
+uniform sampler2D uRipple;
+uniform vec3 uRippleP;   // x: loop phase 0..1, y: tile rows, z: height range
 varying vec2 vUv;
 varying float vMat;
 varying float vTrailU;
@@ -37,6 +39,10 @@ void main() {
         s = b.rg; dz = b.b;
       }
     }
+  }
+  if (o1.x > 4.5 && o1.x < 5.5 && o2.z >= 0.0) {   // RIPPLE (variant 5): continuous real-time tile pulse, per-tile curve row o2.z
+    float rr = texture2D(uRipple, vec2(uRippleP.x, (o2.z + 0.5) / uRippleP.y)).r;
+    s = vec2(1.0, 1.0 + rr * uRippleP.z);
   }
   p = vec3(p.x * s.x, p.y * s.y + dz, p.z * s.x);
   if (o1.w > 0.0) {
@@ -73,6 +79,9 @@ uniform float uTrail;
 uniform vec3 uAlbedo[64];
 uniform vec3 uEmit[64];
 uniform float uObjColor[64];
+uniform float uPulse[64];
+uniform float uEmitBase[64];
+uniform float uBeacon;
 uniform float uGlass[64];
 #ifdef FLAT_RECT
 uniform vec4 uFlatRect;   // three x0,x1,z0,z1 of the city plates
@@ -102,6 +111,7 @@ uniform mat4 uShadowMat;
 uniform float uShadowTexel;
 uniform float uShadowFloor;   // share of the baked sun term that is bounce light and survives in shadow
 uniform float uShadowOn;
+uniform float uShadowGamma;   // >1 deepens the partly shadowed band (Cycles shadows are crisper/darker than the PCF blur)
 uniform vec3 uShadowScale;   // metres per shadow-map UV (x, y) and depth range (m)
 uniform float uPenumbra;     // 2 tan(sun angle / 2): Blender's 16 deg sun -> soft, distance-dependent edges
 float sDepth(vec2 uv) { return unpackRGBAToDepth(texture2D(uShadowMap, uv)); }
@@ -123,10 +133,10 @@ float sunVis() {
   float vis = 0.0;
 #ifdef LOW_TIER
   for (int i = -1; i <= 1; i++) for (int j = -1; j <= 1; j++) vis += (p.z - 0.0004 > sDepth(p.xy + vec2(float(i), float(j)) * r * 2.0)) ? 0.0 : 1.0;
-  return mix(uShadowFloor, 1.0, vis / 9.0);
+  return mix(uShadowFloor, 1.0, pow(vis / 9.0, uShadowGamma));
 #else
   for (int i = -2; i <= 2; i++) for (int j = -2; j <= 2; j++) vis += (p.z - 0.0004 > sDepth(p.xy + vec2(float(i), float(j)) * r)) ? 0.0 : 1.0;
-  return mix(uShadowFloor, 1.0, vis / 25.0);
+  return mix(uShadowFloor, 1.0, pow(vis / 25.0, uShadowGamma));
 #endif
 }
 // cloud shadows: transmission mask of Blender's Cloud_* planes, hit by the sun ray at cloud height, drifting on real time
@@ -149,10 +159,7 @@ uniform sampler2D uAOBot;
 uniform mat4 uAOMat;       // world -> AO clip (orthographic, looking straight down)
 uniform vec2 uAOScale;     // metres per AO uv (x, y)
 uniform float uAOOn;
-uniform float uSkDeep;     // ?skdeep= contrast on the BAKED sky occlusion (contact darkening at crate / building bases) on up-facing surfaces
-uniform float uShDeep;     // ?shdeep= contrast on the BAKED sun shadows (1 = as baked; 1.6 = deeper partial shadow)
-uniform float uAOStr;      // ?aostr= multiplier on the sky-occlusion amount (1 = as calibrated)
-uniform float uAOCap;      // ?aocap= upper bound of the occlusion (0.85 as calibrated)
+uniform float uAOGain;     // strength of the moving-object sky occlusion (tuned against Cycles contact shadows)
 uniform float uFallback;   // debug ?fallback=0
 float s2(float dh, float d) { float t = max(dh, 0.0) / d; return t * t / (1.0 + t * t); }   // sin^2 of the elevation
 float skyVis(float up) {
@@ -183,7 +190,7 @@ float skyVis(float up) {
     }
     occ += o;
   }
-  return 1.0 - up * min(occ / float(DIRS) * uAOStr, uAOCap);
+  return 1.0 - up * min(occ * uAOGain / float(DIRS), 0.92);
 }
 varying vec2 vUv;
 varying float vMat;
@@ -217,10 +224,8 @@ void main() {
   // of the baked sun term stays (on open ground it is ~1%, so shadows go as deep as in Cycles)
   vec3 fn = faceN();
   vec3 ind = max(su - vec3(1.5915494 * max(dot(fn, uSunDir), 0.0)), vec3(0.0));
-  if (uSkDeep > 1.001 && fn.y > 0.5) sk *= pow(clamp(sk.g / (lmScale.x * 0.85), 0.0, 1.0), uSkDeep - 1.0);   // zone's brightest texel ~ open sky
-  float dr = 1.5915494 * max(dot(fn, uSunDir), 0.0);
-  if (dr > 0.05 && uShDeep > 1.001) su *= pow(clamp(su.g / dr, 0.0, 1.0), uShDeep - 1.0);   // deepen the baked (denoised, soft) sun shadows: lit fraction ^ k
-  vec3 L = sk * uSky * skyVis(abs(fn.y)) + mix(ind, su, sunVis() * cloudT()) * uSun;
+  float aoV = skyVis(abs(fn.y));
+  vec3 L = sk * uSky * aoV + mix(ind, su, sunVis() * cloudT()) * uSun;
   // texels the bake never reached (slivers thinner than a lightmap texel) come out pure black: fall back to flat light
   if (uFallback > 0.5 && max(sk.r, max(sk.g, sk.b)) < 0.004) L = uSky * 0.75 + uSun * 0.5;
 #ifdef HAS_LAMPS
@@ -231,7 +236,7 @@ void main() {
 #endif
 #ifdef HAS_TRAIL
   float rev = 1.0 - smoothstep(uTrail - 0.01, uTrail + 0.002, vTrailU);
-  L += dec(lmTrail, lmScale.w).r * uTrailColor * rev;
+  L += dec(lmTrail, lmScale.w).r * uTrailColor * rev * aoV;   // the truck hides the trail glow from the ground under it too
 #endif
 #ifdef FLAT_RECT
   // terrain under the city: the bake saw the city on top of it; light it as open ground (the plates cover it once built)
@@ -252,7 +257,7 @@ void main() {
     }
   }
   if (uGlass[m] > 0.5) L = uSky * 0.55 + uSun * 0.35;   // glass: no diffuse bake, tint by the sky
-  float e = uObjColor[m] > 0.5 ? (vLight < 0.0 ? 1.0 : vLight) : 1.0;   // no light-on keys = white object colour = on (Blender)
+  float e = uObjColor[m] > 0.5 ? (vLight < 0.0 ? 1.0 : mix(uEmitBase[m], 1.0, vLight)) : 1.0;   // no light-on keys = white object colour = on (Blender)
   vec3 alb = uAlbedo[m];
 #ifdef TERRAIN_STYLE
   float th = clamp((vWorld.y - uTerrMap.x) / (uTerrMap.y - uTerrMap.x), 0.0, 1.0);
@@ -261,7 +266,7 @@ void main() {
   vec3 eb = smoothstep(fw * 0.5, fw * 1.5, vBary);
   alb = mix(alb, uWireCol, (1.0 - min(min(eb.x, eb.y), eb.z)) * th);
 #endif
-  vec3 col = alb * L + uEmit[m] * e;
+  vec3 col = alb * L + uEmit[m] * e * mix(1.0, uBeacon, uPulse[m]);
   gl_FragColor = vec4(clamp(col, 0.0, 60000.0), 1.0);   // never hand NaN/Inf to the half-float target (bloom spreads it)
   #include <tonemapping_fragment>
   #include <colorspace_fragment>

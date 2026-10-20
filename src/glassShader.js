@@ -16,6 +16,7 @@ uniform vec3 uTint;          // clear glass transmission tint
 uniform vec3 uAlbedo[64];
 uniform vec3 uEmit[64];
 uniform float uObjColor[64];
+uniform float uEmitBase[64];
 uniform float uClear[64];
 uniform float uRough[64];
 uniform float uSpec[64];
@@ -45,7 +46,7 @@ void main() {
   float ro = uRough[m];
   vec3 r = reflect(-V, n);
   vec3 spec = env(r, ro) + uSun * pow(max(dot(r, uSunDir), 0.0), mix(600.0, 24.0, ro)) * (1.0 - ro) * 3.0;
-  float e = uObjColor[m] > 0.5 ? (vLight < 0.0 ? 1.0 : vLight) : 1.0;
+  float e = uObjColor[m] > 0.5 ? (vLight < 0.0 ? 1.0 : mix(uEmitBase[m], 1.0, vLight)) : 1.0;
   vec3 em = uEmit[m] * e;
 #if defined(CLEAR_MUL) || defined(CLEAR_ADD)
   // Farm_Glass: front = mix(Glass BSDF, Glossy, fresnel(1.45) x 2.2) + faint emission; back faces fully transparent
