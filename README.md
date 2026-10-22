@@ -1,60 +1,52 @@
-# Vorta — scroll-driven truck story (three.js + GSAP)
+<p align="center">
+  <img src="docs/cover.jpg" alt="Vorta: one sofa, one workshop, one scroll" width="100%">
+</p>
 
-A Blender animation (truck delivery through a low-poly city) rebuilt for the web: scrolling scrubs the story frame
-(1–1044 at 24 fps) — camera, truck, day→night lighting, buildings springing in, streets dropping in, lamps switching on.
-Lighting is baked in Blender (Cycles lightmaps) and replayed by custom shaders.
+<h1 align="center">Vorta</h1>
+<p align="center"><b>Everything behind a physical product. In one place.</b><br>
+A sofa gets designed, sold, built, boxed and shipped. You scroll. It happens.</p>
 
-## Run locally
+---
+
+## The trick
+
+The hero is a single pre-rendered Blender shot: one static camera, one room, one sofa, 43 seconds of story.
+Nothing is a 3D scene in the browser. It is a video that **your scroll position drives frame by frame**.
+
+**workshop → blueprint → swatches → wall falls → warehouse → box → forklift → truck leaves**
+
+- Plays itself once. Scroll down to speed it up, scroll up to rewind it. The banner only shows up once the story ends.
+- Page position *is* the frame, so letting it play and scrolling it by hand land on the same spot.
+- It loads adaptively: 1080p / 720p / 480p picked from real throughput, with a poster fallback if video can't play.
+- No widows. Ever. Not a single lonely word on a last line.
+
+## Run it
 
 ```bash
-npm ci          # Node 18+ (clean install + build tested with Node 22)
-npm run dev     # http://127.0.0.1:5173
+npm ci
+npm run dev      # http://127.0.0.1:3000
+npm run build    # static site in dist/, host it anywhere
 ```
 
-## Build / deploy
+Stack: Vite, GSAP, Tailwind. No backend, no keys, no drama.
 
-```bash
-npm run build   # -> dist/  (static site, ~32 MB incl. assets)
-npm run preview # serve dist/ locally to check
-```
+## Where things live
 
-`dist/` is a plain static site. `vite.config.js` uses `base: './'` and the app fetches assets relative to the page,
-so it works from a domain root **or a sub-path** (e.g. GitHub Pages `https://<user>.github.io/<repo>/`) with no changes.
-
-- **Vercel / Netlify / Cloudflare Pages:** framework "Vite" (or "Other"), build command `npm run build`,
-  output directory `dist`.
-- **GitHub Pages:** build in a GitHub Action (`npm ci && npm run build`) and publish `dist/`
-  (e.g. `actions/upload-pages-artifact` + `actions/deploy-pages`), or push `dist/` to a `gh-pages` branch.
-
-No server code, no environment variables, no API keys.
-
-## What's in here
-
-| Path | What |
+| | |
 |---|---|
-| `index.html`, `src/main.js` | app: loading, scroll → story frame (GSAP ScrollTrigger), camera, truck/traffic/crew loops, lights, post (bloom + Blender view transform LUT) |
-| `src/zoneShader.js` | baked-zone shader: lightmap layers (sky / sun / lamps / trail / windows), build-in pops and street drop-ins, trail reveal, sky occlusion |
-| `src/glassShader.js` | glass / window shader |
-| `public/assets/manifest.json` | everything exported from Blender: timeline (camera, truck, sky per frame), zones, materials, lights, curves |
-| `public/assets/lightmaps/` | 51 baked lightmaps (WebP) |
-| `public/assets/zones/` | 15 baked geometry buffers (10 zones + 5 glass) |
-| `public/assets/packed/` | 4 meshopt-compressed glTFs (ambient crew, truck, props, traffic) |
-| `public/assets/view_lut.bin`, `buildmap.png` | Blender colour-management LUT, terrain build map |
-| `docs/WEB_NOTES.md` | full engineering log of the Blender → web pipeline (how every system works and why) |
+| `src/story.js` | the frame-scrubbing engine, loader, dust, adaptive tiers |
+| `src/ui.js` | stepper, banner, scroll-to-frame sync, fast-forward |
+| `src/widows.js` | the no-lonely-words rule |
+| `public/assets/story/` | the renders (`story_1080/720/480.mp4`, `poster.jpg`) |
+| `docs/WEB_NOTES.md` | notes from the earlier truck-and-city version |
 
-`three` and `gsap` are the only runtime dependencies. `gltfpack` (dev) is only used by the Blender export step,
-not by the site build.
+## The truck era
 
-## Debug URL parameters
+The first version was a low-poly city with a delivery truck, built in three.js with baked lightmaps.
+It lives on in the [`truck-v4`](../../tree/truck-v4) branch.
 
-`?frame=600` pins a story frame instead of scrolling · `?tier=low|mid|high` forces the quality tier (default: picked
-from the device) · `?ao=0` sky occlusion off · `?shadow=…` / `?nocast=…` shadow debugging · `?bloom=0` · `?clouds=0` ·
-`?hide=<zone>` hides a baked zone · `?view=three|nocurve` alternative colour transforms · `?fallback=0` disables the
-shading fallback. The small HUD (bottom left) shows the current frame — remove `#hud` in `index.html` / `main.js` for
-production if not wanted.
+## Re-rendering
 
-## Regenerating the assets
-
-The assets are produced from the Blender scene (`Scene_WEB.blend`) by `_web/scripts/web_export.py` in the original
-project folder — not part of this package. Re-export there, then copy `web/public/assets/` over this repo's
-`public/assets/`.
+Edit the shot in Blender, render to `renders/seq3`, encode with ffmpeg (`-g 4 -bf 0` so scrubbing stays snappy),
+drop the files into `public/assets/story/`. The camera is static on purpose: the SVG overlays and dust are
+pinned to it.
