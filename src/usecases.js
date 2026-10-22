@@ -1,5 +1,6 @@
 // Use cases page: one order travels through the company. Each stop has a "Before / With Vorta" switch.
 import './site.css';
+import './widows.js';
 import './usecases.css';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';

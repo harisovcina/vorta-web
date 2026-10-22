@@ -1,6 +1,7 @@
 // Vorta UI layer: loader -> rounded-rect reveal -> auto-played intro -> scroll hint -> frame-synced steps.
 // Everything that moves is a GSAP tween/timeline (loader count, reveal, titles, stepper, hint, scroll scrub).
 import gsap from 'gsap';
+import { glue } from './widows.js';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import './site.css';
 import { initSite } from './site.js';
@@ -91,12 +92,12 @@ const sheen = $('.ld-sheen', logo);
 
 // intro of the loader itself (pure transforms/opacity + one mask radius: cheap)
 gsap.set('.ld-inner', { autoAlpha: 1 });
-const GUIDE_IN = 0.15;
-guideLines.forEach((g, i) => gsap.to(g.l, { attr: { x2: g.bx, y2: g.by }, duration: 1.1, ease: 'power3.inOut', delay: GUIDE_IN + i * 0.08 }));
-gsap.fromTo('.ld-meta', { autoAlpha: 0, y: 6 }, { autoAlpha: 1, y: 0, duration: 0.8, ease: 'power2.out', delay: 0.3 });
+const GUIDE_IN = 0.05;
+guideLines.forEach((g, i) => gsap.to(g.l, { attr: { x2: g.bx, y2: g.by }, duration: 0.9, ease: 'power3.inOut', delay: GUIDE_IN + i * 0.05 }));
+gsap.fromTo('.ld-meta', { autoAlpha: 0, y: 6 }, { autoAlpha: 1, y: 0, duration: 0.6, ease: 'power2.out', delay: 0.15 });
 
 // progress shown = min(real progress, time floor): the logo always takes >= MIN_DRAW to draw, so it never lurches
-const MIN_DRAW = 1.6, LEAD = 0.5, t0 = performance.now();   // LEAD: guides sweep in before the logo starts drawing
+const MIN_DRAW = 1.6, LEAD = 0.1, t0 = performance.now();   // LEAD: guides sweep in before the logo starts drawing
 function loaderTick(time, dtMs) {
   const dt = Math.min(dtMs || 16, 100);
   const floor = Math.max(((performance.now() - t0) / 1000 - LEAD) / MIN_DRAW, 0) * 100;
@@ -112,16 +113,16 @@ gsap.ticker.add(loaderTick);
 // logo complete: fill in, then a quick reflector glint sweeps across and the halo breathes once
 function fillLogo() {
   return gsap.timeline()
-    .to(fillG, { opacity: 1, duration: 0.5, ease: 'power2.inOut' })
-    .to(strokeG, { opacity: 0, duration: 0.4, ease: 'power2.inOut' }, 0.1)
-    .to(haloG, { opacity: 0.12, duration: 0.5, ease: 'power2.out' }, 0)
-    .addLabel('glint', 0.35)
-    .fromTo(sheen, { attr: { x: -70 } }, { attr: { x: 175 }, duration: 0.7, ease: 'power2.inOut' }, 'glint')
-    .fromTo(sheen, { opacity: 0 }, { opacity: 1, duration: 0.2, ease: 'power1.out', yoyo: true, repeat: 1, repeatDelay: 0.3 }, 'glint')
-    .to(haloG, { opacity: 0.55, duration: 0.3, ease: 'power2.out' }, 'glint+=0.2')
-    .to(haloG, { opacity: 0, duration: 0.45, ease: 'power2.inOut' }, 'glint+=0.4')
-    .add(() => guideLines.forEach((g, i) => gsap.to(g.l, { attr: { x1: g.bx, y1: g.by }, duration: 0.75, ease: 'power3.inOut', delay: i * 0.05 })), 0.1)
-    .to('.ld-meta', { autoAlpha: 0, y: 6, duration: 0.3, ease: 'power2.in' }, 'glint+=0.15');
+    .to(fillG, { opacity: 1, duration: 0.35, ease: 'power2.inOut' })
+    .to(strokeG, { opacity: 0, duration: 0.3, ease: 'power2.inOut' }, 0.05)
+    .to(haloG, { opacity: 0.12, duration: 0.35, ease: 'power2.out' }, 0)
+    .addLabel('glint', 0.2)
+    .fromTo(sheen, { attr: { x: -70 } }, { attr: { x: 175 }, duration: 0.5, ease: 'power2.inOut' }, 'glint')
+    .fromTo(sheen, { opacity: 0 }, { opacity: 1, duration: 0.15, ease: 'power1.out', yoyo: true, repeat: 1, repeatDelay: 0.2 }, 'glint')
+    .to(haloG, { opacity: 0.55, duration: 0.2, ease: 'power2.out' }, 'glint+=0.1')
+    .to(haloG, { opacity: 0, duration: 0.3, ease: 'power2.inOut' }, 'glint+=0.25')
+    .add(() => guideLines.forEach((g, i) => gsap.to(g.l, { attr: { x1: g.bx, y1: g.by }, duration: 0.5, ease: 'power3.inOut', delay: i * 0.03 })), 0.05)
+    .to('.ld-meta', { autoAlpha: 0, y: 6, duration: 0.25, ease: 'power2.in' }, 'glint+=0.05');
 }
 
 export const loader = {
@@ -175,11 +176,14 @@ gsap.set(fills, { scaleX: 0 });
 function words(el, text) {
   el.textContent = '';
   const out = [];
+  let tail = null;   // the last two words travel together, so a title never ends on a lone word
   text.split(' ').forEach((w, i, a) => {
     const wrap = document.createElement('span'); wrap.className = 'w';
     const inner = document.createElement('span'); inner.className = 'wi'; inner.textContent = w;
-    wrap.appendChild(inner); el.appendChild(wrap); out.push(inner);
-    if (i < a.length - 1) { const sp = document.createElement('span'); sp.className = 'sp'; el.appendChild(sp); }
+    wrap.appendChild(inner); out.push(inner);
+    if (i === a.length - 2 && a.length > 2) { tail = document.createElement('span'); tail.style.whiteSpace = 'nowrap'; el.appendChild(tail); }
+    (tail || el).appendChild(wrap);
+    if (i < a.length - 1) (tail || el).appendChild(document.createTextNode(' '));   // real space: collapses at line ends (an inline-block spacer left a gap at line starts)
   });
   return out;
 }
@@ -187,7 +191,7 @@ function setContent(c, idx) {
   numEl.textContent = idx < 0 ? '' : `0${idx + 1} / 0${STEPS.length}`;
   tagEl.textContent = c.tag;
   gsap.set($('.rule', ui), { display: idx < 0 ? 'none' : 'block' });
-  descEl.textContent = c.desc;
+  descEl.textContent = glue(c.desc);   // never a single word alone on the last line
   return words(titleEl, c.title);
 }
 
@@ -269,6 +273,7 @@ let siteReady = false, playing = false, boost = 0, rev = 0, rate = 1, paused = f
 // it is and scrubs backwards for as long as you keep scrolling up; when you stop it stays paused until you scroll down again.
 function autoplayTick(time, dtMs) {
   if (!playing) return;
+  if (window.__storyFailed && !storyDone) { storyDone = true; bannerSeen = true; }   // no video: skip straight to the banner
   if (storyDone) { window.__state.frame = STORY_END; return; }   // finished: hold the last frame for good (no loop, no reverse)
   const st = window.__state, dt = Math.min(dtMs, 50) / 1000, k = Math.exp(-dt * 3.2);
   boost *= k; rev *= k;
@@ -353,7 +358,7 @@ function syncScroll() {
 function captures(down) { return !!heroST && (!storyDone || (!down && window.scrollY <= bannerY() + 2)); }
 function buildBanner() {
   const h = $('[data-bn="head"]', bannerEl);
-  h.innerHTML = h.textContent.trim().split(/\s+/).map((w) => `<span class="w"><span>${w}</span></span>`).join(' ');
+  h.innerHTML = splitWords(h.textContent);
   const words = bannerEl.querySelectorAll('.bn-h .w > span'), ups = bannerEl.querySelectorAll('[data-bn="up"]');
   bannerTl = gsap.timeline({ paused: true, onReverseComplete: () => gsap.set(bannerEl, { visibility: 'hidden' }) })
     .set(bannerEl, { visibility: 'visible' }, 0)
@@ -421,10 +426,15 @@ function applyClip() {
 }
 
 // opening title: huge, springs in word by word, then leaves by itself after ~4 s with a blur-out
+// headline words wrapped for the reveal; the last two stay together (no lone word on the last line)
+function splitWords(text) {
+  const w = text.trim().split(/\s+/).map((x) => `<span class="w"><span>${x}</span></span>`);
+  return w.length > 2 ? w.slice(0, -2).join(' ') + ' <span style="white-space:nowrap">' + w.slice(-2).join(' ') + '</span>' : w.join(' ');
+}
 function introTitle() {
   const el = $('#intro'); if (!el) return;
   const h = $('h2', el);
-  h.innerHTML = h.textContent.trim().split(/\s+/).map((w) => `<span class="w"><span>${w}</span></span>`).join(' ');
+  h.innerHTML = splitWords(h.textContent);
   const words = h.querySelectorAll('.w > span');
   gsap.set(el, { visibility: 'visible' });
   gsap.timeline({ onComplete: () => gsap.set(el, { visibility: 'hidden' }) })
@@ -456,7 +466,7 @@ export async function startExperience({ state, pinned = false, warm = null }) {
   const W = window.innerWidth, H = window.innerHeight, H0 = 72;
   const tl = gsap.timeline();
   tl.add(fillLogo())
-    .to('.ld-inner', { autoAlpha: 0, scale: 0.92, filter: 'blur(6px)', duration: 0.35, ease: 'power2.in' }, '+=0.1')
+    .to('.ld-inner', { autoAlpha: 0, scale: 0.92, filter: 'blur(6px)', duration: 0.25, ease: 'power2.in' }, '+=0.02')
     .addLabel('curtain', '-=0.1')
     // the curtain starts and the 3D world starts with it: the truck is already driving into place as the rect opens
     .add(() => { window.__hold3D = false; window.__introGo = true; state.frame = INTRO_START; gsap.set(stage, { visibility: 'visible' }); applyClip(); }, 'curtain')
@@ -467,17 +477,17 @@ export async function startExperience({ state, pinned = false, warm = null }) {
       gsap.delayedCall(reduced ? 0.01 : INTRO_SECONDS, () => enableScroll(state));
     }, 'curtain')
     // 1) a small rounded rect springs in at the centre (wobbles a little before it settles)
-    .fromTo(R, { w: 40, h: 0, r: 12 }, { w: 120, h: H0, duration: 0.9, ease: 'elastic.out(1.1, 0.45)', onUpdate: applyClip }, 'curtain')
-    .addLabel('open', '-=0.35')
+    .fromTo(R, { w: 40, h: 0, r: 12 }, { w: 120, h: H0, duration: 0.5, ease: 'power3.out', onUpdate: applyClip }, 'curtain')
+    .addLabel('open', '-=0.1')
     // 2) it shoots sideways past ~66% and springs back; the height squashes a touch while it stretches (squash and stretch)
-    .to(R, { w: W * 0.66, r: 40, duration: 1.0, ease: 'back.out(2.2)', onUpdate: applyClip }, 'open')
-    .to(R, { h: H0 * 1.25, duration: 1.0, ease: 'elastic.out(1, 0.5)', onUpdate: applyClip }, 'open')
+    .to(R, { w: W * 0.66, r: 40, duration: 0.65, ease: 'power3.out', onUpdate: applyClip }, 'open')
+    .to(R, { h: H0 * 1.25, duration: 0.65, ease: 'power3.out', onUpdate: applyClip }, 'open')
     // 3) the height catches up to almost full screen while the corners keep rounding
-    .to(R, { w: W * 0.94, h: H * 0.9, r: 80, duration: 0.85, ease: 'expo.inOut', onUpdate: applyClip }, 'open+=0.7')
+    .to(R, { w: W * 0.94, h: H * 0.9, r: 80, duration: 0.65, ease: 'power3.inOut', onUpdate: applyClip }, 'open+=0.35')
     // 4) and it lands with a soft spring: a tiny bounce at the edges, then full-bleed with square corners
-    .to(R, { w: W, h: H, duration: 1.1, ease: 'elastic.out(1, 0.55)', onUpdate: applyClip }, '>-0.12')
-    .to(R, { r: 0, duration: 0.8, ease: 'power3.inOut', onUpdate: applyClip }, '<0.15')
-    .to(canvas, { scale: 1, duration: 2.2, ease: 'expo.inOut' }, 'open')
+    .to(R, { w: W, h: H, duration: 0.6, ease: 'power3.out', onUpdate: applyClip }, '>-0.2')
+    .to(R, { r: 0, duration: 0.5, ease: 'power3.inOut', onUpdate: applyClip }, '<0.1')
+    .to(canvas, { scale: 1, duration: 1.4, ease: 'power3.inOut' }, 'open')
     .add(() => {
       gsap.set(ui, { visibility: 'visible' });
       uiOn = true; cur = undefined;
@@ -487,7 +497,7 @@ export async function startExperience({ state, pinned = false, warm = null }) {
       gsap.to(copy, { autoAlpha: 1, duration: 0.9, ease: 'power2.out', delay: 4.5 });
       gsap.fromTo(stepper, { autoAlpha: 0, y: 12 }, { autoAlpha: 1, y: 0, duration: 0.9, ease: 'power3.out', delay: 4.5 });
       showNav(0.3);
-    }, 'open+=1.6')
+    }, 'open+=0.7')
     // NOT clearProps on the clip: that would bring back the stylesheet's closed starting clip and hide the scene
     .add(() => { gsap.set(stage, { clipPath: 'none' }); gsap.set(canvas, { clearProps: 'transform' }); loaderEl.remove(); });
   if (qs.has('hold')) { window.__tl = tl; tl.pause(0); }   // debug: ?hold pauses the reveal so a test can seek it

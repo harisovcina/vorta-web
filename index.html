@@ -83,15 +83,15 @@
 
   /* ---------- text layer ---------- */
   #ui { position: absolute; left: 0; right: 0; bottom: 0; z-index: 6; padding: 0 var(--pad-x) calc(var(--pad-b) + env(safe-area-inset-bottom)); pointer-events: none; visibility: hidden; }
-  .block { width: clamp(300px, 28vw, 420px); }   /* fixed width: title, description and stepper share it, and it stays bottom-left clear of the truck */
+  .block { width: clamp(300px, 33vw, 500px); }   /* fixed width: title, description and stepper share it, and it stays bottom-left clear of the truck */
   .eyebrow { display: flex; align-items: center; gap: 12px; font: 500 12px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: rgb(var(--ink) / .72); height: 14px; margin-bottom: 12px; }
   .eyebrow .num { color: rgb(var(--ink)); }
   .eyebrow .rule { width: 28px; height: 1px; background: currentColor; opacity: .5; }
-  .title { margin: 0; font: 600 clamp(34px, 3.25vw, 49px)/1.1 var(--font); letter-spacing: -0.022em; color: rgb(var(--ink)); }
+  .title { margin: 0; font: 600 clamp(36px, 3.7vw, 56px)/1.1 var(--font); letter-spacing: -0.022em; color: rgb(var(--ink)); }
   .title .w { display: inline-block; overflow: hidden; vertical-align: top; padding: 0 .04em .14em 0; margin: 0 -.04em -.14em 0; }
   .title .wi { display: inline-block; will-change: transform; }
   .title .sp { display: inline-block; width: .24em; }
-  .desc { margin: 10px 0 0; font: 400 15px/1.5 var(--font); color: rgb(var(--ink) / .8); min-height: 3em; }
+  .desc { margin: 12px 0 0; font: 400 clamp(15px, 1.2vw, 18px)/1.5 var(--font); color: rgb(var(--ink) / .8); min-height: 3em; }
 
   /* stepper: five equal segments spanning the copy width; numbers above, active segment fills with progress */
   .stepper { display: flex; align-items: flex-end; gap: 8px; margin-top: 16px; width: 100%; pointer-events: auto; }
@@ -100,8 +100,8 @@
   .pip .bar { position: relative; display: block; width: 100%; height: 2px; border-radius: 2px; background: rgb(var(--track) / .55); overflow: hidden; }
   .pip .bar i { position: absolute; inset: 0; background: rgb(var(--fill)); transform: scaleX(0); transform-origin: 0 50%; }
   .pip.on .n, .pip.done .n { color: rgb(var(--fill)); }
-  .ffwd { position: absolute; right: var(--pad-x); bottom: calc(var(--pad-b) + env(safe-area-inset-bottom)); width: 40px; height: 40px; display: grid; place-items: center; padding: 0; border-radius: 999px; border: .5px solid rgb(var(--num) / .35); background: none; color: rgb(var(--num)); opacity: .6; cursor: pointer; pointer-events: auto; transition: opacity .3s, border-color .3s, background .3s, color .3s; }
-  .ffwd:hover, .ffwd:focus-visible { opacity: 1; border-color: rgb(var(--num) / .7); background: rgb(var(--num) / .08); color: rgb(var(--fill)); }
+  .ffwd { position: absolute; right: var(--pad-x); bottom: calc(var(--pad-b) + env(safe-area-inset-bottom)); width: 40px; height: 40px; display: grid; place-items: center; padding: 0; border-radius: 999px; border: 1px solid rgb(255 255 255 / .6); background: rgb(255 255 255 / .16); -webkit-backdrop-filter: blur(14px) saturate(1.3); backdrop-filter: blur(14px) saturate(1.3); box-shadow: inset 0 1px 0 rgb(255 255 255 / .55), 0 0 14px rgb(255 255 255 / .28), 0 2px 10px rgb(var(--num) / .08); color: rgb(var(--num)); opacity: .85; cursor: pointer; pointer-events: auto; transition: opacity .3s, border-color .3s, background .3s, color .3s, box-shadow .3s; }
+  .ffwd:hover, .ffwd:focus-visible { opacity: 1; border-color: rgb(255 255 255 / .85); background: rgb(255 255 255 / .3); box-shadow: inset 0 1px 0 rgb(255 255 255 / .7), 0 0 20px rgb(255 255 255 / .45), 0 2px 10px rgb(var(--num) / .1); }
   .ffwd svg { width: 16px; height: 16px; display: block; }
   .skip { appearance: none; border: 0; background: none; margin: 18px 0 0; padding: 4px 0; display: inline-flex; align-items: center; gap: 8px; font: 500 11px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: rgb(var(--num)); cursor: pointer; pointer-events: auto; opacity: .85; transition: opacity .3s, gap .4s cubic-bezier(.16,1,.3,1), color .3s; }
   .skip:hover { opacity: 1; gap: 12px; color: rgb(var(--fill)); }
@@ -126,9 +126,14 @@
     #veil { --rx: 120%; --ry: 46%; }
     .block { width: 100%; }
     .title { font-size: 36px; }
+    .desc { font-size: 15px; }
+    #intro { align-content: start; padding-top: calc(max(env(safe-area-inset-top), 0px) + 104px); }
+    #intro h2 { max-width: none; font-size: clamp(44px, 14vw, 72px); line-height: .96; }
+    #intro::before { background: radial-gradient(ellipse 120% 60% at 30% 22%, rgb(var(--veil) / .62), rgb(var(--veil) / 0) 75%); }
     .hint { left: auto; right: var(--pad-x); transform: none; justify-items: end; }
     .hint .label { display: none; }
-    .ffwd { bottom: calc(var(--pad-b) + env(safe-area-inset-bottom) + 60px); }
+    #ui { padding-bottom: calc(var(--pad-b) + 26px + env(safe-area-inset-bottom)); }   /* block sits 26px higher: frees a strip for the skip button */
+    .ffwd { right: var(--pad-x); bottom: calc(env(safe-area-inset-bottom) + 29.5svh); width: 40px; height: 40px; }   /* fixed spot, independent of the copy */
   }
 </style>
 </head>
@@ -194,7 +199,7 @@
 
   <div class="hint" id="hint" aria-hidden="true">
     <div class="mouse"><i></i></div><div class="swipe"><i></i></div>
-    <span class="label">Scroll down to continue</span>
+    <span class="label">Scroll down</span>
   </div>
     <div id="banner" aria-label="Vorta: from order to delivery">
     <div class="bn">

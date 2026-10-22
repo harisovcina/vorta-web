@@ -454,3 +454,7 @@ html.past-hero .topnav { --ink: 243 245 250; --veil: 11 19 44; }
 }
 @media (prefers-reduced-motion: reduce) { .chip i, .ico.live, .ico.live *, .fit-ck, .fit-li, .fe-ring, .fe-spin, .fe-tile { animation: none !important; } .btn { transition: none; } }
 }
+
+/* no widows: balanced headings, pretty-wrapped body text (src/widows.js glues the last two words as a fallback) */
+h1, h2, h3, .title { text-wrap: balance; }
+p, li, blockquote, figcaption, .desc { text-wrap: pretty; }
