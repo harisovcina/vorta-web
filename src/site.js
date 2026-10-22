@@ -2,6 +2,7 @@
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 gsap.registerPlugin(ScrollTrigger);
+import { initProto } from './proto.js';
 
 const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const fine = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
@@ -45,6 +46,7 @@ function initDither() {
 
 export function initSite() {
   initDither();
+  initProto(document.getElementById('proto'));
   const $$ = (s) => gsap.utils.toArray(s);
 
   // ---- glow borders: ring + halo + spotlight layers on every .fx card ----

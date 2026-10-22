@@ -36,7 +36,8 @@
   /* ---------- 3D stage (clipped to a rounded rectangle until the reveal) ---------- */
   #hero { position: relative; height: 100vh; height: 100svh; overflow: hidden; background: var(--navy-950); }
   #stage { position: absolute; inset: 0; z-index: 2; clip-path: inset(50% 50% 50% 50% round 26px); visibility: hidden; }
-  #stage canvas { display: block; width: 100%; height: 100%; transform-origin: 50% 50%; }
+  #world { position: absolute; inset: 0; transform-origin: 50% 50%; }
+  #stage canvas { display: block; width: 100%; height: 100%; }
   /* content after the hero (placeholder) */
   #next { position: relative; z-index: 3; min-height: 100vh; display: grid; place-items: center; padding: 96px var(--pad-x); background: var(--navy-950); color: var(--navy-100); }
   #next h2 { margin: 0; font: 600 clamp(32px, 5vw, 64px)/1.05 var(--font); letter-spacing: -0.03em; text-align: center; }
@@ -56,6 +57,14 @@
   .ld-comet path { fill: none; stroke: var(--accent-hi); stroke-width: 1.2; stroke-linecap: round; }
   .ld-meta { display: flex; gap: 14px; align-items: baseline; font: 500 10px/1 var(--mono); letter-spacing: .18em; text-transform: uppercase; color: var(--navy-400); }
   .ld-meta .ld-pct { font-variant-numeric: tabular-nums; color: var(--navy-300); min-width: 4ch; }
+
+  /* ---------- opening title (auto-exits after ~4 s) ---------- */
+  #intro { position: absolute; inset: 0; z-index: 5; display: grid; align-content: center; padding: 0 var(--pad-x); pointer-events: none; visibility: hidden; }
+  #intro .in-tag { display: block; margin-bottom: clamp(14px, 2vw, 28px); font: 500 clamp(12px, 1vw, 15px)/1 var(--mono); letter-spacing: .2em; text-transform: uppercase; color: rgb(var(--ink) / .7); }
+  #intro h2 { margin: 0; max-width: 18ch; font: 600 clamp(26px, 4.8vw, 84px)/.95 var(--font); letter-spacing: -0.045em; color: rgb(var(--ink)); }
+  #intro .w { display: inline-block; overflow: hidden; vertical-align: top; padding: 0 .04em .12em 0; margin: 0 -.04em -.12em 0; }
+  #intro .w > span { display: inline-block; will-change: transform, filter; }
+  #intro::before { content: ""; position: absolute; inset: 0; z-index: -1; background: radial-gradient(ellipse 80% 70% at 30% 55%, rgb(var(--veil) / .62), rgb(var(--veil) / 0) 75%); }
 
   /* ---------- progressive blur + tint, bottom-left -> middle ---------- */
   #veil { position: absolute; inset: 0; z-index: 2; pointer-events: none; opacity: 0; --rx: 46%; --ry: 54%; }   /* inside #stage: opens with the curtain, sits above the canvas */
@@ -78,7 +87,7 @@
   .eyebrow { display: flex; align-items: center; gap: 12px; font: 500 12px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: rgb(var(--ink) / .72); height: 14px; margin-bottom: 12px; }
   .eyebrow .num { color: rgb(var(--ink)); }
   .eyebrow .rule { width: 28px; height: 1px; background: currentColor; opacity: .5; }
-  .title { margin: 0; font: 600 clamp(26px, 2.5vw, 38px)/1.1 var(--font); letter-spacing: -0.022em; color: rgb(var(--ink)); }
+  .title { margin: 0; font: 600 clamp(34px, 3.25vw, 49px)/1.1 var(--font); letter-spacing: -0.022em; color: rgb(var(--ink)); }
   .title .w { display: inline-block; overflow: hidden; vertical-align: top; padding: 0 .04em .14em 0; margin: 0 -.04em -.14em 0; }
   .title .wi { display: inline-block; will-change: transform; }
   .title .sp { display: inline-block; width: .24em; }
@@ -91,6 +100,9 @@
   .pip .bar { position: relative; display: block; width: 100%; height: 2px; border-radius: 2px; background: rgb(var(--track) / .55); overflow: hidden; }
   .pip .bar i { position: absolute; inset: 0; background: rgb(var(--fill)); transform: scaleX(0); transform-origin: 0 50%; }
   .pip.on .n, .pip.done .n { color: rgb(var(--fill)); }
+  .ffwd { position: absolute; right: var(--pad-x); bottom: calc(var(--pad-b) + env(safe-area-inset-bottom)); width: 40px; height: 40px; display: grid; place-items: center; padding: 0; border-radius: 999px; border: .5px solid rgb(var(--num) / .35); background: none; color: rgb(var(--num)); opacity: .6; cursor: pointer; pointer-events: auto; transition: opacity .3s, border-color .3s, background .3s, color .3s; }
+  .ffwd:hover, .ffwd:focus-visible { opacity: 1; border-color: rgb(var(--num) / .7); background: rgb(var(--num) / .08); color: rgb(var(--fill)); }
+  .ffwd svg { width: 16px; height: 16px; display: block; }
   .skip { appearance: none; border: 0; background: none; margin: 18px 0 0; padding: 4px 0; display: inline-flex; align-items: center; gap: 8px; font: 500 11px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: rgb(var(--num)); cursor: pointer; pointer-events: auto; opacity: .85; transition: opacity .3s, gap .4s cubic-bezier(.16,1,.3,1), color .3s; }
   .skip:hover { opacity: 1; gap: 12px; color: rgb(var(--fill)); }
   .pip:focus-visible { outline: 2px solid rgb(var(--fill)); outline-offset: 6px; border-radius: 2px; }
@@ -113,19 +125,19 @@
     :root { --gx: 24px; --pad-x: 22px; --pad-b: 30px; }
     #veil { --rx: 120%; --ry: 46%; }
     .block { width: 100%; }
-    .title { font-size: 28px; }
+    .title { font-size: 36px; }
     .hint { left: auto; right: var(--pad-x); transform: none; justify-items: end; }
     .hint .label { display: none; }
+    .ffwd { bottom: calc(var(--pad-b) + env(safe-area-inset-bottom) + 60px); }
   }
 </style>
 </head>
 <body>
   <header id="topnav" class="topnav">
     <div class="tn-bar">
-      <nav class="tn-links tn-l" aria-label="Main"><a href="#product">Features</a><a href="#who">Use cases</a></nav>
       <a class="tn-logo" href="#hero" aria-label="Vorta, back to top"><svg viewBox="0 0 149 27" xmlns="http://www.w3.org/2000/svg" fill="currentColor" role="img" aria-label="Vorta"><path d="M11.3061 26.1118C11.4166 26.3328 11.6744 26.5169 11.9322 26.5169H12.3004C12.595 26.5169 12.816 26.3328 12.9265 26.1118L24.2324 1.32585C24.4534 0.847069 24.1588 0.368291 23.6064 0.368291H20.9916C20.6602 0.368291 20.4392 0.589266 20.3656 0.773412L12.2636 19.0038H12.0426L3.94065 0.773412C3.86699 0.589266 3.6092 0.368291 3.31458 0.368291H0.699852C0.147444 0.368291 -0.147174 0.847069 0.0737893 1.32585L11.3061 26.1118Z"/><path d="M33.2617 13.2953C33.2617 20.6611 39.1173 26.5169 46.4827 26.5169C53.8481 26.5169 59.7405 20.6611 59.7405 13.2953C59.7405 5.92948 53.8481 0 46.4827 0C39.1173 0 33.2617 5.92948 33.2617 13.2953ZM36.9444 13.2953C36.9444 8.06557 41.2532 3.68291 46.4827 3.68291C51.749 3.68291 56.0578 8.06557 56.0578 13.2953C56.0578 18.5619 51.749 22.834 46.4827 22.834C41.2532 22.834 36.9444 18.5619 36.9444 13.2953Z"/><path d="M72.3555 25.4489C72.3555 25.8172 72.6502 26.1487 73.0553 26.1487H75.449C75.8173 26.1487 76.1487 25.8172 76.1487 25.4489V16.0575H81.7096L86.6077 25.8172C86.6813 25.9645 86.9023 26.1487 87.1969 26.1487H90.0694C90.6955 26.1487 90.9533 25.5594 90.6955 25.0806L85.6502 15.726C88.8541 14.437 91.1006 11.638 91.1006 8.24972C91.1006 3.86706 87.4915 0.368291 83.0723 0.368291H73.0553C72.6502 0.368291 72.3555 0.699753 72.3555 1.06804V25.4489ZM76.2224 12.8902V3.94071H82.7776C85.1714 3.94071 87.2706 5.92948 87.2706 8.32338C87.2706 10.8646 85.1714 12.8902 82.7776 12.8902H76.2224Z"/><path d="M107.748 25.4489C107.748 25.8172 108.079 26.1487 108.448 26.1487H110.878C111.247 26.1487 111.578 25.8172 111.578 25.4489V3.83023H117.581C117.986 3.83023 118.281 3.49876 118.281 3.13047V1.06804C118.281 0.699753 117.986 0.368291 117.581 0.368291H101.745C101.34 0.368291 101.045 0.699753 101.045 1.06804V3.13047C101.045 3.49876 101.34 3.83023 101.745 3.83023H107.748V25.4489Z"/><path d="M125.394 26.1487H127.714C128.156 26.1487 128.45 25.854 128.561 25.5962C129.297 23.9021 130.071 22.2448 130.807 20.5506H142.85L145.133 25.5962C145.28 25.9277 145.538 26.1487 145.98 26.1487H148.3C148.853 26.1487 149.147 25.6699 148.926 25.1911L137.694 0.405119C137.583 0.184145 137.252 0 137.068 0H136.7C136.515 0 136.184 0.184145 136.074 0.405119L124.768 25.1911C124.547 25.6699 124.841 26.1487 125.394 26.1487ZM132.243 17.3833L136.736 7.29216H136.921L141.45 17.3833H132.243Z"/></svg></a>
-      <div class="tn-r"><nav class="tn-links" aria-label="More"><a href="#about">About</a><a href="#pricing">Pricing</a></nav>
-      <a class="tn-cta" href="#demo">Book a demo <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg></a></div>
+      <nav class="tn-links" aria-label="Main"><a href="#product">Features</a><a href="./use-cases.html">Use cases</a><a href="#about">About</a><a href="#pricing">Pricing</a></nav>
+      <a class="tn-cta" href="#demo">Book a demo <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg></a>
     </div>
   </header>
   <div id="loader" role="progressbar" aria-label="Loading" aria-valuemin="0" aria-valuemax="100">
@@ -166,6 +178,8 @@
     </div>
   </div>
 
+  <div id="intro" aria-hidden="true"><h2>Everything behind a physical product. In one place.</h2></div>
+
   <div id="ui">
     <div class="block">
       <div class="copy" aria-live="polite">
@@ -174,8 +188,8 @@
         <p class="desc"></p>
       </div>
       <nav class="stepper" aria-label="Journey steps"></nav>
-      <button class="skip" type="button">Skip the journey <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h10M9 4l4 4-4 4"/></svg></button>
     </div>
+    <button class="ffwd" type="button" aria-label="Skip to the end of the animation" title="Skip to the end"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M1.5 3.2v9.6a.6.6 0 0 0 .95.5l6.6-4.8a.6.6 0 0 0 0-1L2.45 2.7a.6.6 0 0 0-.95.5z"/><path d="M8.5 3.2v9.6a.6.6 0 0 0 .95.5l6.6-4.8a.6.6 0 0 0 0-1L9.45 2.7a.6.6 0 0 0-.95.5z"/></svg></button>
   </div>
 
   <div class="hint" id="hint" aria-hidden="true">
@@ -223,26 +237,12 @@
     <section id="product" class="relative px-[var(--gx)] pt-[clamp(80px,11vw,160px)] pb-[clamp(40px,6vw,90px)]">
       <div class="mx-auto max-w-[760px] text-center">
         <p class="eyebrow-s" data-reveal>The product</p>
-        <h2 class="h2-s mt-5" data-title>Every order, one clear picture.</h2>
-        <p class="lead-s mx-auto mt-5 max-w-[56ch]" data-reveal>Orders, stock, production and shipments, in sync. No duplicate files, no chasing updates.</p>
+        <h2 class="h2-s mt-5" data-title>Everything you need for operational control.</h2>
+        <p class="lead-s mx-auto mt-5 max-w-[56ch]" data-reveal>Orders, shipments, products, stock and reports in one system. Click through the modules below and try it.</p>
       </div>
-      <div class="glass fx wrap mt-14 overflow-hidden p-3" data-card>
-        <div class="tg tg-corner"></div>
-        <div class="relative grid min-h-[460px] grid-cols-1 gap-3 rounded-[20px] bg-navy-950/60 p-4 md:grid-cols-[220px_1fr]">
-          <aside class="hidden flex-col gap-1 border-r border-white/[.06] pr-4 md:flex">
-            <span class="mb-4 text-navy-100"><svg viewBox="0 0 149 27" xmlns="http://www.w3.org/2000/svg" class="h-[14px] w-auto" fill="currentColor" role="img" aria-label="Vorta"><path d="M11.3061 26.1118C11.4166 26.3328 11.6744 26.5169 11.9322 26.5169H12.3004C12.595 26.5169 12.816 26.3328 12.9265 26.1118L24.2324 1.32585C24.4534 0.847069 24.1588 0.368291 23.6064 0.368291H20.9916C20.6602 0.368291 20.4392 0.589266 20.3656 0.773412L12.2636 19.0038H12.0426L3.94065 0.773412C3.86699 0.589266 3.6092 0.368291 3.31458 0.368291H0.699852C0.147444 0.368291 -0.147174 0.847069 0.0737893 1.32585L11.3061 26.1118Z"/><path d="M33.2617 13.2953C33.2617 20.6611 39.1173 26.5169 46.4827 26.5169C53.8481 26.5169 59.7405 20.6611 59.7405 13.2953C59.7405 5.92948 53.8481 0 46.4827 0C39.1173 0 33.2617 5.92948 33.2617 13.2953ZM36.9444 13.2953C36.9444 8.06557 41.2532 3.68291 46.4827 3.68291C51.749 3.68291 56.0578 8.06557 56.0578 13.2953C56.0578 18.5619 51.749 22.834 46.4827 22.834C41.2532 22.834 36.9444 18.5619 36.9444 13.2953Z"/><path d="M72.3555 25.4489C72.3555 25.8172 72.6502 26.1487 73.0553 26.1487H75.449C75.8173 26.1487 76.1487 25.8172 76.1487 25.4489V16.0575H81.7096L86.6077 25.8172C86.6813 25.9645 86.9023 26.1487 87.1969 26.1487H90.0694C90.6955 26.1487 90.9533 25.5594 90.6955 25.0806L85.6502 15.726C88.8541 14.437 91.1006 11.638 91.1006 8.24972C91.1006 3.86706 87.4915 0.368291 83.0723 0.368291H73.0553C72.6502 0.368291 72.3555 0.699753 72.3555 1.06804V25.4489ZM76.2224 12.8902V3.94071H82.7776C85.1714 3.94071 87.2706 5.92948 87.2706 8.32338C87.2706 10.8646 85.1714 12.8902 82.7776 12.8902H76.2224Z"/><path d="M107.748 25.4489C107.748 25.8172 108.079 26.1487 108.448 26.1487H110.878C111.247 26.1487 111.578 25.8172 111.578 25.4489V3.83023H117.581C117.986 3.83023 118.281 3.49876 118.281 3.13047V1.06804C118.281 0.699753 117.986 0.368291 117.581 0.368291H101.745C101.34 0.368291 101.045 0.699753 101.045 1.06804V3.13047C101.045 3.49876 101.34 3.83023 101.745 3.83023H107.748V25.4489Z"/><path d="M125.394 26.1487H127.714C128.156 26.1487 128.45 25.854 128.561 25.5962C129.297 23.9021 130.071 22.2448 130.807 20.5506H142.85L145.133 25.5962C145.28 25.9277 145.538 26.1487 145.98 26.1487H148.3C148.853 26.1487 149.147 25.6699 148.926 25.1911L137.694 0.405119C137.583 0.184145 137.252 0 137.068 0H136.7C136.515 0 136.184 0.184145 136.074 0.405119L124.768 25.1911C124.547 25.6699 124.841 26.1487 125.394 26.1487ZM132.243 17.3833L136.736 7.29216H136.921L141.45 17.3833H132.243Z"/></svg></span>
-            <span class="rounded-lg px-3 py-2 text-[13px] bg-white/[.07] text-white">Orders</span><span class="rounded-lg px-3 py-2 text-[13px] text-navy-400">Shipments</span><span class="rounded-lg px-3 py-2 text-[13px] text-navy-400">Production</span><span class="rounded-lg px-3 py-2 text-[13px] text-navy-400">Stock</span><span class="rounded-lg px-3 py-2 text-[13px] text-navy-400">Customers</span><span class="rounded-lg px-3 py-2 text-[13px] text-navy-400">Reports</span>
-          </aside>
-          <div class="flex flex-col gap-4">
-            <div class="grid grid-cols-2 gap-3 lg:grid-cols-4"><div class="rounded-2xl border border-white/[.07] bg-white/[.03] p-4"><div class="text-[26px] font-semibold tracking-[-.02em] text-white">847</div><div class="mt-1 font-mono text-[11px] uppercase tracking-[.1em] text-navy-400">Active orders</div></div><div class="rounded-2xl border border-white/[.07] bg-white/[.03] p-4"><div class="text-[26px] font-semibold tracking-[-.02em] text-white">94%</div><div class="mt-1 font-mono text-[11px] uppercase tracking-[.1em] text-navy-400">On time</div></div><div class="rounded-2xl border border-white/[.07] bg-white/[.03] p-4"><div class="text-[26px] font-semibold tracking-[-.02em] text-white">23</div><div class="mt-1 font-mono text-[11px] uppercase tracking-[.1em] text-navy-400">To ship</div></div><div class="rounded-2xl border border-white/[.07] bg-white/[.03] p-4"><div class="text-[26px] font-semibold tracking-[-.02em] text-white">&euro;2.4M</div><div class="mt-1 font-mono text-[11px] uppercase tracking-[.1em] text-navy-400">This month</div></div></div>
-            <div class="overflow-hidden rounded-2xl border border-white/[.07] bg-white/[.02]">
-              <div class="grid grid-cols-[1.1fr_1.4fr_.9fr_.8fr] gap-3 px-4 py-3 font-mono text-[11px] uppercase tracking-[.1em] text-navy-400"><span>Order</span><span>Customer</span><span>Due</span><span>Status</span></div>
-              <div class="grid grid-cols-[1.1fr_1.4fr_.9fr_.8fr] items-center gap-3 border-t border-white/[.06] px-4 py-3 text-[13px] text-navy-200"><span class="font-mono text-navy-300">ORD-2847</span><span>Hartmann Möbel</span><span class="font-mono text-navy-300">12 Oct</span><span class="pill bg-[#7FF3E4]/10 text-accent border-accent/20"><i></i>In production</span></div><div class="grid grid-cols-[1.1fr_1.4fr_.9fr_.8fr] items-center gap-3 border-t border-white/[.06] px-4 py-3 text-[13px] text-navy-200"><span class="font-mono text-navy-300">ORD-2846</span><span>Nordholz GmbH</span><span class="font-mono text-navy-300">11 Oct</span><span class="pill bg-[#9FABCD]/10 text-navy-200 border-navy-300/20"><i></i>Ready</span></div><div class="grid grid-cols-[1.1fr_1.4fr_.9fr_.8fr] items-center gap-3 border-t border-white/[.06] px-4 py-3 text-[13px] text-navy-200"><span class="font-mono text-navy-300">ORD-2845</span><span>Kuhn &amp; Söhne</span><span class="font-mono text-navy-300">10 Oct</span><span class="pill bg-[#7385B3]/15 text-navy-100 border-navy-400/30"><i></i>In transit</span></div><div class="grid grid-cols-[1.1fr_1.4fr_.9fr_.8fr] items-center gap-3 border-t border-white/[.06] px-4 py-3 text-[13px] text-navy-200"><span class="font-mono text-navy-300">ORD-2844</span><span>Berger Handel</span><span class="font-mono text-navy-300">09 Oct</span><span class="pill bg-white/5 text-navy-300 border-white/10"><i></i>Delivered</span></div>
-            </div>
-            <div class="rounded-2xl border border-white/[.07] bg-white/[.02] p-4"><div class="flex justify-between font-mono text-[11px] uppercase tracking-[.1em] text-navy-400"><span>Shipment 0412</span><span>68%</span></div><div class="mt-3 h-[3px] overflow-hidden rounded bg-white/10"><div class="h-full w-[68%] rounded bg-accent"></div></div></div>
-          </div>
-        </div>
-        <p class="relative px-4 pb-2 pt-3 text-center font-mono text-[11px] tracking-[.1em] text-navy-500">SAMPLE DATA</p>
+      <div class="wrap mt-14">
+        <div class="proto glass" id="proto" data-reveal></div>
+        <p class="pr-note" data-reveal><i></i>Interactive mockup with sample data, built to show how Vorta works. It is not the live product and nothing you click is saved.</p>
       </div>
     </section>
 
@@ -436,7 +436,7 @@
           <p class="mt-8 max-w-[30ch] text-[17px] leading-[1.4] text-white md:mt-12">Software that brings order to companies working with physical products. From order to delivery, all in one place.</p>
         </div>
         <nav class="grid grid-cols-2 justify-items-center gap-x-[clamp(32px,8vw,128px)] gap-y-10 sm:grid-cols-3 md:justify-items-start" aria-label="Footer">
-          <div><p class="font-sans text-[13px] uppercase tracking-[.14em] text-navy-200">Navigation</p><ul class="mt-7 grid gap-3 text-[17px] text-white"><li><a href="#product">Features</a></li><li><a href="#who">Use Cases</a></li><li><a href="#pricing">Pricing</a></li><li><a href="#about">About</a></li></ul></div>
+          <div><p class="font-sans text-[13px] uppercase tracking-[.14em] text-navy-200">Navigation</p><ul class="mt-7 grid gap-3 text-[17px] text-white"><li><a href="#product">Features</a></li><li><a href="./use-cases.html">Use Cases</a></li><li><a href="#pricing">Pricing</a></li><li><a href="#about">About</a></li></ul></div>
           <div><p class="font-sans text-[13px] uppercase tracking-[.14em] text-navy-200">Resources</p><ul class="mt-7 grid gap-3 text-[17px] text-white"><li><a href="#demo">Book a Demo</a></li><li><a href="#">Terms of Use</a></li><li><a href="#">Privacy Policy</a></li></ul></div>
           <div class="col-span-2 sm:col-span-1"><p class="font-sans text-[13px] uppercase tracking-[.14em] text-navy-200">Follow us</p><ul class="mt-7 grid gap-3 text-[17px] text-white"><li><a href="#">LinkedIn</a></li><li><a href="#">Instagram</a></li></ul></div>
         </nav>
@@ -445,6 +445,6 @@
   </main>
 
   <div id="hud"></div>
-  <script type="module" src="/src/main.js"></script>
+  <script type="module" src="/src/story.js"></script>
 </body>
 </html>

@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en" class="uc past-hero">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0B132C">
+<title>Use cases · Vorta</title>
+<meta name="description" content="Follow one order through the company and see what changes for each role with Vorta.">
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Caveat:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: 243 245 250; --veil: 11 19 44;
+    --gx: clamp(24px, 11.2vw, 280px); --wrap: 2400px;
+    --font: "Instrument Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  @media (max-width: 720px) { :root { --gx: 24px; } }
+  * { box-sizing: border-box; }
+  /* stay invisible until the page's own CSS has arrived (no flash of unstyled nav/logo) */
+  html, body { background: #0B132C; }
+  body { opacity: 0; }
+</style>
+</head>
+<body>
+  <header id="topnav" class="topnav">
+    <div class="tn-bar">
+      <a class="tn-logo" href="./index.html" aria-label="Vorta, back to top"><svg viewBox="0 0 149 27" xmlns="http://www.w3.org/2000/svg" fill="currentColor" role="img" aria-label="Vorta"><path d="M11.3061 26.1118C11.4166 26.3328 11.6744 26.5169 11.9322 26.5169H12.3004C12.595 26.5169 12.816 26.3328 12.9265 26.1118L24.2324 1.32585C24.4534 0.847069 24.1588 0.368291 23.6064 0.368291H20.9916C20.6602 0.368291 20.4392 0.589266 20.3656 0.773412L12.2636 19.0038H12.0426L3.94065 0.773412C3.86699 0.589266 3.6092 0.368291 3.31458 0.368291H0.699852C0.147444 0.368291 -0.147174 0.847069 0.0737893 1.32585L11.3061 26.1118Z"/><path d="M33.2617 13.2953C33.2617 20.6611 39.1173 26.5169 46.4827 26.5169C53.8481 26.5169 59.7405 20.6611 59.7405 13.2953C59.7405 5.92948 53.8481 0 46.4827 0C39.1173 0 33.2617 5.92948 33.2617 13.2953ZM36.9444 13.2953C36.9444 8.06557 41.2532 3.68291 46.4827 3.68291C51.749 3.68291 56.0578 8.06557 56.0578 13.2953C56.0578 18.5619 51.749 22.834 46.4827 22.834C41.2532 22.834 36.9444 18.5619 36.9444 13.2953Z"/><path d="M72.3555 25.4489C72.3555 25.8172 72.6502 26.1487 73.0553 26.1487H75.449C75.8173 26.1487 76.1487 25.8172 76.1487 25.4489V16.0575H81.7096L86.6077 25.8172C86.6813 25.9645 86.9023 26.1487 87.1969 26.1487H90.0694C90.6955 26.1487 90.9533 25.5594 90.6955 25.0806L85.6502 15.726C88.8541 14.437 91.1006 11.638 91.1006 8.24972C91.1006 3.86706 87.4915 0.368291 83.0723 0.368291H73.0553C72.6502 0.368291 72.3555 0.699753 72.3555 1.06804V25.4489ZM76.2224 12.8902V3.94071H82.7776C85.1714 3.94071 87.2706 5.92948 87.2706 8.32338C87.2706 10.8646 85.1714 12.8902 82.7776 12.8902H76.2224Z"/><path d="M107.748 25.4489C107.748 25.8172 108.079 26.1487 108.448 26.1487H110.878C111.247 26.1487 111.578 25.8172 111.578 25.4489V3.83023H117.581C117.986 3.83023 118.281 3.49876 118.281 3.13047V1.06804C118.281 0.699753 117.986 0.368291 117.581 0.368291H101.745C101.34 0.368291 101.045 0.699753 101.045 1.06804V3.13047C101.045 3.49876 101.34 3.83023 101.745 3.83023H107.748V25.4489Z"/><path d="M125.394 26.1487H127.714C128.156 26.1487 128.45 25.854 128.561 25.5962C129.297 23.9021 130.071 22.2448 130.807 20.5506H142.85L145.133 25.5962C145.28 25.9277 145.538 26.1487 145.98 26.1487H148.3C148.853 26.1487 149.147 25.6699 148.926 25.1911L137.694 0.405119C137.583 0.184145 137.252 0 137.068 0H136.7C136.515 0 136.184 0.184145 136.074 0.405119L124.768 25.1911C124.547 25.6699 124.841 26.1487 125.394 26.1487ZM132.243 17.3833L136.736 7.29216H136.921L141.45 17.3833H132.243Z"/></svg></a>
+      <nav class="tn-links" aria-label="Main"><a href="./index.html#product">Features</a><a href="./use-cases.html" aria-current="page">Use cases</a><a href="./index.html#about">About</a><a href="./index.html#pricing">Pricing</a></nav>
+      <a class="tn-cta" href="mailto:hello@vorta.io">Book a demo <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg></a>
+    </div>
+  </header>
+
+  <main id="site">
+    <section class="uc-hero">
+      <div class="tg"></div><i class="uc-glow"></i>
+      <div class="uc-hero-in">
+        <p class="uc-eyebrow" data-up>Use cases</p>
+        <h1 class="uc-h"><span class="w"><span>One</span></span> <span class="w"><span>order.</span></span> <span class="w"><span>Eight</span></span> <span class="w"><span>people.</span></span> <span class="w"><span class="accent">One</span></span> <span class="w"><span>place.</span></span></h1>
+        <p class="uc-lead" data-up>Follow order ORD-2851, 14 chairs for a customer in Germany, from the first message to the paid invoice. At every stop, flip the switch to see that person's week before and with Vorta.</p>
+        <div class="uc-hero-cta" data-up><a class="btn btn-primary" href="#journey">Follow the order <svg class="arr" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h10M9 4l4 4-4 4"/></svg></a><a class="btn btn-ghost" href="mailto:hello@vorta.io">Book a demo</a></div>
+        <nav class="uc-concepts" data-up aria-label="Concepts on this page"><span>Two concepts on this page</span><a href="#journey"><b>A</b>Follow one order</a><a href="#pick"><b>B</b>Pick your role</a></nav>
+      </div>
+    </section>
+
+    <section id="journey" aria-label="The journey of one order">
+      <div class="rail" data-rail></div>
+      <div class="track" data-track></div>
+    </section>
+
+    <div class="uc-presenter"><button class="btn btn-ghost" type="button" data-flipall><span>Flip every stop to Vorta</span></button></div>
+
+    <section id="pick" class="uc-sec">
+      <div class="uc-sec-in">
+        <div class="uc-sec-h"><span class="uc-concept"><b>B</b>Concept</span><h2 class="h2-s">Pick your role. Clean up your desk.</h2><p class="lead-s">Choose a person, then drag across their desk to swap the chaos for Vorta.</p></div>
+        <div class="picker" data-picker></div>
+      </div>
+    </section>
+
+
+    <section class="uc-proof">
+      <div class="tg tg-fill v"></div>
+      <p class="uc-num" data-count="50000000">0</p>
+      <p class="uc-num-l">Product variants per model, handled automatically</p>
+      <figure data-reveal>
+        <blockquote>“Our products have up to 50 million variants per model. Vorta codes every version automatically, tracks personalised orders and invoices without errors.”</blockquote>
+        <figcaption>Nermin Ademović · Adana</figcaption>
+      </figure>
+    </section>
+
+    <section class="uc-cta">
+      <div class="uc-cta-in glass" data-reveal>
+        <div class="tg tg-corner"></div>
+        <p class="eyebrow-s">Recognise yourself?</p>
+        <h2 class="h2-s max-w-[16ch]">Show us your process. We will show you the week after.</h2>
+        <p class="lead-s max-w-[50ch]">A 30-minute walkthrough with someone who has run operations like yours.</p>
+        <div class="flex flex-wrap gap-3"><a class="btn btn-primary" href="mailto:hello@vorta.io">Book a demo <svg class="arr" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h10M9 4l4 4-4 4"/></svg></a><a class="btn btn-ghost" href="./index.html#product">Try the product</a></div>
+      </div>
+    </section>
+
+    <footer class="relative isolate overflow-hidden bg-navy-950 text-navy-100" style="min-height:max(43.9vw,620px)">
+      <img src="./assets/site/footer-landscape.png" alt="" class="pointer-events-none absolute bottom-0 left-1/2 -z-10 w-full min-w-[900px] max-w-none -translate-x-1/2 select-none object-cover object-bottom" loading="lazy" decoding="async">
+      <div class="wrap flex flex-col items-center justify-between gap-14 px-[var(--gx)] pt-[clamp(64px,14vw,240px)] pb-[clamp(260px,24vw,420px)] text-center md:flex-row md:items-start md:text-left">
+        <div class="flex flex-col items-center text-white md:items-start"><svg viewBox="0 0 149 27" xmlns="http://www.w3.org/2000/svg" class="h-[27px] w-auto" fill="currentColor" role="img" aria-label="Vorta"><path d="M11.3061 26.1118C11.4166 26.3328 11.6744 26.5169 11.9322 26.5169H12.3004C12.595 26.5169 12.816 26.3328 12.9265 26.1118L24.2324 1.32585C24.4534 0.847069 24.1588 0.368291 23.6064 0.368291H20.9916C20.6602 0.368291 20.4392 0.589266 20.3656 0.773412L12.2636 19.0038H12.0426L3.94065 0.773412C3.86699 0.589266 3.6092 0.368291 3.31458 0.368291H0.699852C0.147444 0.368291 -0.147174 0.847069 0.0737893 1.32585L11.3061 26.1118Z"/><path d="M33.2617 13.2953C33.2617 20.6611 39.1173 26.5169 46.4827 26.5169C53.8481 26.5169 59.7405 20.6611 59.7405 13.2953C59.7405 5.92948 53.8481 0 46.4827 0C39.1173 0 33.2617 5.92948 33.2617 13.2953ZM36.9444 13.2953C36.9444 8.06557 41.2532 3.68291 46.4827 3.68291C51.749 3.68291 56.0578 8.06557 56.0578 13.2953C56.0578 18.5619 51.749 22.834 46.4827 22.834C41.2532 22.834 36.9444 18.5619 36.9444 13.2953Z"/><path d="M72.3555 25.4489C72.3555 25.8172 72.6502 26.1487 73.0553 26.1487H75.449C75.8173 26.1487 76.1487 25.8172 76.1487 25.4489V16.0575H81.7096L86.6077 25.8172C86.6813 25.9645 86.9023 26.1487 87.1969 26.1487H90.0694C90.6955 26.1487 90.9533 25.5594 90.6955 25.0806L85.6502 15.726C88.8541 14.437 91.1006 11.638 91.1006 8.24972C91.1006 3.86706 87.4915 0.368291 83.0723 0.368291H73.0553C72.6502 0.368291 72.3555 0.699753 72.3555 1.06804V25.4489ZM76.2224 12.8902V3.94071H82.7776C85.1714 3.94071 87.2706 5.92948 87.2706 8.32338C87.2706 10.8646 85.1714 12.8902 82.7776 12.8902H76.2224Z"/><path d="M107.748 25.4489C107.748 25.8172 108.079 26.1487 108.448 26.1487H110.878C111.247 26.1487 111.578 25.8172 111.578 25.4489V3.83023H117.581C117.986 3.83023 118.281 3.49876 118.281 3.13047V1.06804C118.281 0.699753 117.986 0.368291 117.581 0.368291H101.745C101.34 0.368291 101.045 0.699753 101.045 1.06804V3.13047C101.045 3.49876 101.34 3.83023 101.745 3.83023H107.748V25.4489Z"/><path d="M125.394 26.1487H127.714C128.156 26.1487 128.45 25.854 128.561 25.5962C129.297 23.9021 130.071 22.2448 130.807 20.5506H142.85L145.133 25.5962C145.28 25.9277 145.538 26.1487 145.98 26.1487H148.3C148.853 26.1487 149.147 25.6699 148.926 25.1911L137.694 0.405119C137.583 0.184145 137.252 0 137.068 0H136.7C136.515 0 136.184 0.184145 136.074 0.405119L124.768 25.1911C124.547 25.6699 124.841 26.1487 125.394 26.1487ZM132.243 17.3833L136.736 7.29216H136.921L141.45 17.3833H132.243Z"/></svg>
+          <p class="mt-8 max-w-[30ch] text-[17px] leading-[1.4] text-white md:mt-12">Software that brings order to companies working with physical products. From order to delivery, all in one place.</p>
+        </div>
+        <nav class="grid grid-cols-2 justify-items-center gap-x-[clamp(32px,8vw,128px)] gap-y-10 sm:grid-cols-3 md:justify-items-start" aria-label="Footer">
+          <div><p class="font-sans text-[13px] uppercase tracking-[.14em] text-navy-200">Navigation</p><ul class="mt-7 grid gap-3 text-[17px] text-white"><li><a href="./index.html#product">Features</a></li><li><a href="./use-cases.html">Use Cases</a></li><li><a href="./index.html#pricing">Pricing</a></li><li><a href="./index.html#about">About</a></li></ul></div>
+          <div><p class="font-sans text-[13px] uppercase tracking-[.14em] text-navy-200">Resources</p><ul class="mt-7 grid gap-3 text-[17px] text-white"><li><a href="./index.html#demo">Book a Demo</a></li><li><a href="#">Terms of Use</a></li><li><a href="#">Privacy Policy</a></li></ul></div>
+          <div class="col-span-2 sm:col-span-1"><p class="font-sans text-[13px] uppercase tracking-[.14em] text-navy-200">Follow us</p><ul class="mt-7 grid gap-3 text-[17px] text-white"><li><a href="#">LinkedIn</a></li><li><a href="#">Instagram</a></li></ul></div>
+        </nav>
+      </div>
+    </footer>
+  </main>
+  <script type="module" src="/src/usecases.js"></script>
+</body>
+</html>

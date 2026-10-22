@@ -5,6 +5,6 @@ import tailwindcss from '@tailwindcss/vite';
 export default defineConfig({
   plugins: [tailwindcss()],
   base: './',
-  build: { target: 'esnext', chunkSizeWarningLimit: 1500 },
+  build: { target: 'esnext', chunkSizeWarningLimit: 1500, rollupOptions: { input: { main: 'index.html', usecases: 'use-cases.html' } } },
   server: { host: '127.0.0.1', port: 3000 },
 });
